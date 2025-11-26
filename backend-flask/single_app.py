@@ -266,7 +266,7 @@ def get_rooms():
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 
-# ==== TAMBAHKAN INI - Single Room Detail ====
+# ==== Single Room Detail ====
 @app.route('/api/rooms/<room_id>', methods=['GET'])
 def get_room(room_id):
     try:
@@ -302,6 +302,126 @@ def get_room(room_id):
         }
         
         return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+# ==== BOOKINGS ROUTES ====
+@app.route('/api/bookings', methods=['POST'])
+@jwt_required()
+def create_booking():
+    try:
+        current_user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['nik', 'guest_name', 'phone', 'check_in', 'check_out', 'total_guests', 'payment_method', 'rooms']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'message': f'Missing required field: {field}'}), 400
+        
+        # Calculate total price
+        total_price = 0
+        booking_rooms = []
+        
+        for room_data in data['rooms']:
+            room = Room.query.get(room_data['room_id'])
+            if not room:
+                return jsonify({'message': f'Room not found: {room_data["room_id"]}'}), 404
+            
+            if room.status != 'available':
+                return jsonify({'message': f'Room {room.room_number} is not available'}), 400
+            
+            price = room.price_with_breakfast if room_data['breakfast_option'] == 'with' else room.price_no_breakfast
+            subtotal = price * room_data['quantity']
+            total_price += subtotal
+            
+            booking_rooms.append({
+                'room': room,
+                'room_type': room.room_type.name,
+                'quantity': room_data['quantity'],
+                'breakfast_option': room_data['breakfast_option'],
+                'price_per_night': price,
+                'subtotal': subtotal
+            })
+        
+        # Create booking
+        booking = Booking(
+            user_id=current_user_id,
+            nik=data['nik'],
+            guest_name=data['guest_name'],
+            phone=data['phone'],
+            check_in=datetime.strptime(data['check_in'], '%Y-%m-%d').date(),
+            check_out=datetime.strptime(data['check_out'], '%Y-%m-%d').date(),
+            total_guests=data['total_guests'],
+            payment_method=data['payment_method'],
+            total_price=total_price
+        )
+        
+        db.session.add(booking)
+        db.session.flush()  # Get booking ID
+        
+        # Create booking rooms
+        for br_data in booking_rooms:
+            booking_room = BookingRoom(
+                booking_id=booking.id,
+                room_id=br_data['room'].id,
+                room_type=br_data['room_type'],
+                quantity=br_data['quantity'],
+                breakfast_option=br_data['breakfast_option'],
+                price_per_night=br_data['price_per_night'],
+                subtotal=br_data['subtotal']
+            )
+            db.session.add(booking_room)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Booking created successfully',
+            'booking_id': booking.id
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+@app.route('/api/bookings/me', methods=['GET'])
+@jwt_required()
+def get_my_bookings():
+    try:
+        current_user_id = get_jwt_identity()
+        
+        bookings = Booking.query.filter_by(user_id=current_user_id).order_by(Booking.created_at.desc()).all()
+        
+        result = []
+        for booking in bookings:
+            booking_data = {
+                'id': booking.id,
+                'nik': booking.nik,
+                'guest_name': booking.guest_name,
+                'phone': booking.phone,
+                'check_in': booking.check_in.isoformat(),
+                'check_out': booking.check_out.isoformat(),
+                'total_guests': booking.total_guests,
+                'payment_method': booking.payment_method,
+                'total_price': booking.total_price,
+                'status': booking.status,
+                'created_at': booking.created_at.isoformat(),
+                'booking_rooms': []
+            }
+            
+            for br in booking.booking_rooms:
+                booking_data['booking_rooms'].append({
+                    'id': br.id,
+                    'room_type': br.room_type,
+                    'quantity': br.quantity,
+                    'breakfast_option': br.breakfast_option,
+                    'subtotal': br.subtotal
+                })
+            
+            result.append(booking_data)
+        
+        return jsonify({'data': result}), 200
         
     except Exception as e:
         return jsonify({'message': str(e)}), 500
@@ -665,9 +785,11 @@ if __name__ == '__main__':
     print("💡 Test endpoints:")
     print("   GET  http://localhost:5000/")
     print("   GET  http://localhost:5000/api/rooms")
-    print("   GET  http://localhost:5000/api/rooms/ROOM_ID (NEW!)")
+    print("   GET  http://localhost:5000/api/rooms/ROOM_ID")
     print("   POST http://localhost:5000/api/auth/register")
     print("   POST http://localhost:5000/api/auth/login")
+    print("   POST http://localhost:5000/api/bookings (JWT required)")
+    print("   GET  http://localhost:5000/api/bookings/me (JWT required)")
     print("   GET  http://localhost:5000/api/admin/rooms (Admin only)")
     print("   POST http://localhost:5000/api/admin/rooms (Admin only)")
     
