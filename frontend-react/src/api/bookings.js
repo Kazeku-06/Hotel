@@ -4,6 +4,9 @@ import api from './axios'
 export const bookingsAPI = {
   createBooking: (data) => api.post('/bookings', data),
   getMyBookings: () => api.get('/bookings/me'),
+  getAllBookings: () => api.get('/admin/bookings'), // New endpoint for admin
+  updateBookingStatus: (bookingId, status) => 
+    api.put(`/admin/bookings/${bookingId}/status`, { status }),
 }
 
 // Tambahkan debug di axios interceptor
