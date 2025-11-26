@@ -1,12 +1,38 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { bookingsAPI } from '../../api/bookings'
 import { formatCurrency } from '../../utils/formatCurrency'
 import { formatDate } from '../../utils/dateUtils'
+import { useState } from 'react'
 
 export const AdminBookings = () => {
+  const queryClient = useQueryClient()
+  const [selectedBooking, setSelectedBooking] = useState(null)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [showStatusModal, setShowStatusModal] = useState(false)
+
   const { data: bookings, isLoading, error } = useQuery({
     queryKey: ['admin-bookings'],
     queryFn: () => bookingsAPI.getAllBookings()
+  })
+
+  // DEBUG: Lihat struktur data
+  console.log('🔍 DEBUG AdminBookings data:', bookings)
+  console.log('🔍 DEBUG bookings type:', typeof bookings)
+  console.log('🔍 DEBUG bookings.data:', bookings?.data)
+  console.log('🔍 DEBUG is bookings.data array?', Array.isArray(bookings?.data))
+
+  // Mutation untuk update status booking
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ bookingId, status }) => 
+      bookingsAPI.updateBookingStatus(bookingId, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['admin-bookings'])
+      setShowStatusModal(false)
+      setSelectedBooking(null)
+    },
+    onError: (error) => {
+      console.error('❌ Update status error:', error)
+    }
   })
 
   const getStatusColor = (status) => {
@@ -19,6 +45,47 @@ export const AdminBookings = () => {
     }
     return colors[status] || colors.pending
   }
+
+  const handleViewDetails = (booking) => {
+    setSelectedBooking(booking)
+    setShowDetailModal(true)
+  }
+
+  const handleUpdateStatus = (booking) => {
+    setSelectedBooking(booking)
+    setShowStatusModal(true)
+  }
+
+  const handleStatusChange = (newStatus) => {
+    console.log('🔘 Status button clicked:', newStatus)
+    if (selectedBooking) {
+      updateStatusMutation.mutate({
+        bookingId: selectedBooking.id,
+        status: newStatus
+      })
+    }
+  }
+
+  const getNextStatusOptions = (currentStatus) => {
+    const statusFlow = {
+      pending: ['confirmed', 'cancelled'],
+      confirmed: ['checked_in', 'cancelled'],
+      checked_in: ['checked_out'],
+      checked_out: [],
+      cancelled: []
+    }
+    return statusFlow[currentStatus] || []
+  }
+
+  // PERBAIKAN: Handle berbagai struktur data
+  const bookingsList = 
+    Array.isArray(bookings) ? bookings : // Jika bookings langsung array
+    Array.isArray(bookings?.data) ? bookings.data : // Jika bookings.data adalah array
+    Array.isArray(bookings?.data?.data) ? bookings.data.data : // Jika bookings.data.data adalah array
+    Array.isArray(bookings?.bookings) ? bookings.bookings : 
+    []
+
+  console.log('✅ Processed bookingsList:', bookingsList)
 
   if (isLoading) {
     return (
@@ -38,6 +105,21 @@ export const AdminBookings = () => {
     )
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+        <div className="max-w-7xl mx-auto px-4">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-8">
+            Manage Bookings
+          </h1>
+          <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg">
+            Failed to load bookings: {error.message}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -49,12 +131,6 @@ export const AdminBookings = () => {
             View and manage all hotel bookings
           </p>
         </div>
-
-        {error && (
-          <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-6">
-            Failed to load bookings
-          </div>
-        )}
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
           <div className="overflow-x-auto">
@@ -82,45 +158,54 @@ export const AdminBookings = () => {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {bookings?.data.map((booking) => (
-                  <tr key={booking.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">
+                {bookingsList.map((booking, index) => (
+                  <tr key={booking.id || index} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        #{booking.id.slice(-8)}
+                        #{booking.id?.slice(-8) || `UNKNOWN-${index}`}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-white">
-                        {booking.guest_name}
+                        {booking.guest_name || 'N/A'}
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {booking.phone}
+                        {booking.phone || 'N/A'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900 dark:text-white">
-                        {formatDate(booking.check_in)} - {formatDate(booking.check_out)}
+                        {booking.check_in && booking.check_out ? 
+                          `${formatDate(booking.check_in)} - ${formatDate(booking.check_out)}` : 
+                          'Date not available'
+                        }
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {booking.total_guests} guests
+                        {booking.total_guests || 'N/A'} guests
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-semibold text-gold-500">
-                        {formatCurrency(booking.total_price)}
+                        {formatCurrency(booking.total_price || 0)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(booking.status)}`}>
-                        {booking.status.replace('_', ' ').toUpperCase()}
+                        {booking.status?.replace('_', ' ').toUpperCase() || 'UNKNOWN'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3 transition-colors duration-300">
+                      <button 
+                        onClick={() => handleViewDetails(booking)}
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3 transition-colors duration-300"
+                      >
                         View
                       </button>
-                      <button className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-colors duration-300">
-                        Update
+                      <button 
+                        onClick={() => handleUpdateStatus(booking)}
+                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 transition-colors duration-300"
+                      >
+                        Update Status
                       </button>
                     </td>
                   </tr>
@@ -130,7 +215,7 @@ export const AdminBookings = () => {
           </div>
         </div>
 
-        {bookings?.data.length === 0 && (
+        {bookingsList.length === 0 && (
           <div className="text-center py-12">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 max-w-md mx-auto">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
@@ -139,6 +224,162 @@ export const AdminBookings = () => {
               <p className="text-gray-600 dark:text-gray-300">
                 All bookings will appear here once customers start making reservations.
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* Booking Detail Modal */}
+        {showDetailModal && selectedBooking && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
+                    Booking Details
+                  </h3>
+                  <button
+                    onClick={() => setShowDetailModal(false)}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-lg"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Booking ID</label>
+                      <p className="text-sm text-gray-900 dark:text-white">#{selectedBooking.id?.slice(-8)}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedBooking.status)}`}>
+                        {selectedBooking.status?.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Guest Information</label>
+                    <p className="text-sm text-gray-900 dark:text-white">Name: {selectedBooking.guest_name}</p>
+                    <p className="text-sm text-gray-900 dark:text-white">Phone: {selectedBooking.phone}</p>
+                    <p className="text-sm text-gray-900 dark:text-white">NIK: {selectedBooking.nik}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Stay Details</label>
+                    <p className="text-sm text-gray-900 dark:text-white">Check-in: {formatDate(selectedBooking.check_in)}</p>
+                    <p className="text-sm text-gray-900 dark:text-white">Check-out: {formatDate(selectedBooking.check_out)}</p>
+                    <p className="text-sm text-gray-900 dark:text-white">Total Guests: {selectedBooking.total_guests}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment</label>
+                    <p className="text-sm text-gray-900 dark:text-white">Method: {selectedBooking.payment_method}</p>
+                    <p className="text-sm font-semibold text-gold-500">Total: {formatCurrency(selectedBooking.total_price)}</p>
+                  </div>
+
+                  {selectedBooking.booking_rooms && selectedBooking.booking_rooms.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Rooms</label>
+                      {selectedBooking.booking_rooms.map(room => (
+                        <div key={room.id} className="text-sm text-gray-900 dark:text-white border-l-4 border-gold-500 pl-2 mb-2">
+                          {room.room_type} ({room.quantity}x) - {room.breakfast_option} breakfast
+                          <br />
+                          <span className="text-gold-500">{formatCurrency(room.subtotal)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Update Status Modal - PERBAIKAN */}
+        {showStatusModal && selectedBooking && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
+                    Update Booking Status
+                  </h3>
+                  <button
+                    onClick={() => setShowStatusModal(false)}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-lg"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    Booking: #{selectedBooking.id?.slice(-8)}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Current Status: <span className={`font-semibold ${getStatusColor(selectedBooking.status)}`}>
+                      {selectedBooking.status?.replace('_', ' ').toUpperCase()}
+                    </span>
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Change Status To:
+                  </label>
+                  {getNextStatusOptions(selectedBooking.status).map(status => (
+                    <button
+                      key={status}
+                      onClick={() => handleStatusChange(status)}
+                      disabled={updateStatusMutation.isLoading}
+                      className={`w-full p-3 rounded-lg border-2 transition-all duration-300 flex items-center justify-between ${
+                        updateStatusMutation.isLoading 
+                          ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed border-gray-300 dark:border-gray-600' 
+                          : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:border-gold-500 hover:bg-gold-50 dark:hover:bg-gold-900/20 cursor-pointer'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mr-3 ${getStatusColor(status)}`}>
+                          {status.replace('_', ' ').toUpperCase()}
+                        </span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {status === 'confirmed' && 'Confirm the booking'}
+                          {status === 'checked_in' && 'Check-in guest'}
+                          {status === 'checked_out' && 'Check-out guest'}
+                          {status === 'cancelled' && 'Cancel booking'}
+                        </span>
+                      </div>
+                      {!updateStatusMutation.isLoading && (
+                        <span className="text-gold-500 text-lg">→</span>
+                      )}
+                    </button>
+                  ))}
+                  
+                  {getNextStatusOptions(selectedBooking.status).length === 0 && (
+                    <div className="text-center py-6">
+                      <div className="text-gray-400 dark:text-gray-500 text-4xl mb-2">✓</div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        No further status changes available for this booking.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {updateStatusMutation.isLoading && (
+                  <div className="mt-4 text-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gold-500 mx-auto"></div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Updating status...</p>
+                  </div>
+                )}
+
+                {updateStatusMutation.isError && (
+                  <div className="mt-4 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg">
+                    Error: {updateStatusMutation.error?.message || 'Failed to update status'}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

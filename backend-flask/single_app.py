@@ -307,7 +307,6 @@ def get_room(room_id):
         return jsonify({'message': str(e)}), 500
 
 # ==== BOOKINGS ROUTES ====
-# ==== BOOKINGS ROUTES ====
 @app.route('/api/bookings', methods=['POST'])
 @jwt_required()
 def create_booking():
@@ -346,7 +345,7 @@ def create_booking():
                 return jsonify({'message': f'Room {room.room_number} is not available'}), 400
             
             price_per_night = room.price_with_breakfast if room_data['breakfast_option'] == 'with' else room.price_no_breakfast
-            subtotal = price_per_night * room_data['quantity'] * nights  # PERBAIKAN: tambahkan * nights
+            subtotal = price_per_night * room_data['quantity'] * nights
             
             print(f"🔍 DEBUG - Room {room.room_number}: {price_per_night} x {room_data['quantity']} x {nights} nights = {subtotal}")
             
@@ -377,7 +376,7 @@ def create_booking():
         )
         
         db.session.add(booking)
-        db.session.flush()  # Get booking ID
+        db.session.flush()
         
         # Create booking rooms
         for br_data in booking_rooms:
@@ -412,12 +411,10 @@ def get_my_bookings():
     try:
         current_user_id = get_jwt_identity()
         
-        # DEBUG: Print user ID
         print(f"🔍 DEBUG - Current user ID: {current_user_id}")
         
         bookings = Booking.query.filter_by(user_id=current_user_id).order_by(Booking.created_at.desc()).all()
         
-        # DEBUG: Print database results
         print(f"🔍 DEBUG - Found {len(bookings)} bookings in database")
         
         result = []
@@ -431,13 +428,12 @@ def get_my_bookings():
                 'check_out': booking.check_out.isoformat(),
                 'total_guests': booking.total_guests,
                 'payment_method': booking.payment_method,
-                'total_price': float(booking.total_price),  # Pastikan float
+                'total_price': float(booking.total_price),
                 'status': booking.status,
                 'created_at': booking.created_at.isoformat(),
                 'booking_rooms': []
             }
             
-            # DEBUG: Print each booking
             print(f"🔍 DEBUG - Booking: {booking.id}, Status: {booking.status}")
             
             for br in booking.booking_rooms:
@@ -446,17 +442,15 @@ def get_my_bookings():
                     'room_type': br.room_type,
                     'quantity': br.quantity,
                     'breakfast_option': br.breakfast_option,
-                    'subtotal': float(br.subtotal)  # Pastikan float
+                    'subtotal': float(br.subtotal)
                 })
             
             result.append(booking_data)
         
-        # DEBUG: Print final response structure
         print("🔍 DEBUG - Final response structure:")
         print(f"Response: {{'data': {result}}}")
         print(f"Response type: {{'data': array with {len(result)} items}}")
         
-        # PASTIKAN: Kembalikan dengan struktur yang konsisten
         return jsonify({
             'success': True,
             'data': result,
@@ -469,6 +463,117 @@ def get_my_bookings():
             'success': False,
             'message': str(e),
             'data': []
+        }), 500
+
+# ==== ADMIN BOOKINGS ROUTES ====
+@app.route('/api/admin/bookings', methods=['GET'])
+@jwt_required()
+def get_all_bookings():
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        # Check if user is admin
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        bookings = Booking.query.order_by(Booking.created_at.desc()).all()
+        
+        result = []
+        for booking in bookings:
+            booking_data = {
+                'id': booking.id,
+                'nik': booking.nik,
+                'guest_name': booking.guest_name,
+                'phone': booking.phone,
+                'check_in': booking.check_in.isoformat(),
+                'check_out': booking.check_out.isoformat(),
+                'total_guests': booking.total_guests,
+                'payment_method': booking.payment_method,
+                'total_price': float(booking.total_price),
+                'status': booking.status,
+                'created_at': booking.created_at.isoformat(),
+                'booking_rooms': []
+            }
+            
+            for br in booking.booking_rooms:
+                booking_data['booking_rooms'].append({
+                    'id': br.id,
+                    'room_type': br.room_type,
+                    'quantity': br.quantity,
+                    'breakfast_option': br.breakfast_option,
+                    'subtotal': float(br.subtotal)
+                })
+            
+            result.append(booking_data)
+        
+        return jsonify({
+            'success': True,
+            'data': result,
+            'count': len(result)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ ERROR in get_all_bookings: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e),
+            'data': []
+        }), 500
+
+@app.route('/api/admin/bookings/<booking_id>/status', methods=['PUT', 'OPTIONS'])
+@jwt_required()
+def update_booking_status(booking_id):
+    try:
+        # Handle OPTIONS request for CORS preflight
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        # Check if user is admin
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        booking = Booking.query.get(booking_id)
+        if not booking:
+            return jsonify({'message': 'Booking not found'}), 404
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
+            
+        new_status = data.get('status')
+        
+        if not new_status:
+            return jsonify({'message': 'Status is required'}), 400
+        
+        valid_statuses = ['pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled']
+        if new_status not in valid_statuses:
+            return jsonify({'message': 'Invalid status'}), 400
+        
+        print(f"🔄 Updating booking {booking_id} status from {booking.status} to {new_status}")
+        
+        # Update booking status
+        booking.status = new_status
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Booking status updated to {new_status}',
+            'booking': {
+                'id': booking.id,
+                'status': booking.status
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ ERROR in update_booking_status: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
         }), 500
 
 # ==== ADMIN ROUTES ====
@@ -501,7 +606,7 @@ def admin_rooms():
                         photos.append({
                             'id': photo.id,
                             'photo_path': f"/{photo.photo_path}",
-                            'is_primary': getattr(photo, 'is_primary', False)  # Safe access
+                            'is_primary': getattr(photo, 'is_primary', False)
                         })
                 except Exception as photo_error:
                     print(f"Error loading photos for room {room.id}: {photo_error}")
@@ -568,30 +673,25 @@ def admin_rooms():
             )
             
             db.session.add(room)
-            db.session.flush()  # Get room ID without committing
+            db.session.flush()
             
             # Handle photo uploads (only for form-data)
             if request.content_type.startswith('multipart/form-data'):
                 photos = request.files.getlist('photos')
-                if photos and photos[0].filename:  # Check if files were uploaded
+                if photos and photos[0].filename:
                     for i, photo in enumerate(photos):
                         if photo and allowed_file(photo.filename):
-                            # Create unique filename
                             filename = secure_filename(photo.filename)
                             unique_filename = f"{uuid.uuid4()}_{filename}"
                             photo_path = os.path.join(app.config['UPLOAD_FOLDER'], 'rooms', unique_filename)
                             
-                            # Create directory if not exists
                             os.makedirs(os.path.dirname(photo_path), exist_ok=True)
-                            
-                            # Save file
                             photo.save(photo_path)
                             
-                            # Create photo record
                             room_photo = RoomPhoto(
                                 room_id=room.id,
                                 photo_path=photo_path,
-                                is_primary=(i == 0)  # First photo as primary
+                                is_primary=(i == 0)
                             )
                             db.session.add(room_photo)
             
@@ -626,7 +726,6 @@ def admin_room_detail(room_id):
         if request.method == 'PUT':
             # Check content type
             if request.content_type.startswith('multipart/form-data'):
-                # Handle form data
                 room_number = request.form.get('room_number')
                 room_type_id = request.form.get('room_type_id')
                 capacity = request.form.get('capacity')
@@ -635,7 +734,6 @@ def admin_room_detail(room_id):
                 status = request.form.get('status')
                 description = request.form.get('description')
             else:
-                # Handle JSON data (fallback)
                 data = request.get_json()
                 room_number = data.get('room_number')
                 room_type_id = data.get('room_type_id')
@@ -645,12 +743,10 @@ def admin_room_detail(room_id):
                 status = data.get('status')
                 description = data.get('description')
             
-            # Check if room number already exists (excluding current room)
             if room_number and room_number != room.room_number:
                 if Room.query.filter_by(room_number=room_number).first():
                     return jsonify({'message': 'Room number already exists'}), 400
 
-            # Update room data
             if room_number: room.room_number = room_number
             if room_type_id: room.room_type_id = room_type_id
             if capacity: room.capacity = int(capacity)
@@ -659,28 +755,22 @@ def admin_room_detail(room_id):
             if status: room.status = status
             if description is not None: room.description = description
             
-            # Handle new photo uploads (only for form-data)
             if request.content_type.startswith('multipart/form-data'):
                 photos = request.files.getlist('photos')
                 if photos and photos[0].filename:
                     for i, photo in enumerate(photos):
                         if photo and allowed_file(photo.filename):
-                            # Create unique filename
                             filename = secure_filename(photo.filename)
                             unique_filename = f"{uuid.uuid4()}_{filename}"
                             photo_path = os.path.join(app.config['UPLOAD_FOLDER'], 'rooms', unique_filename)
                             
-                            # Create directory if not exists
                             os.makedirs(os.path.dirname(photo_path), exist_ok=True)
-                            
-                            # Save file
                             photo.save(photo_path)
                             
-                            # Create photo record
                             room_photo = RoomPhoto(
                                 room_id=room.id,
                                 photo_path=photo_path,
-                                is_primary=(i == 0 and not room.photos)  # Primary if first photo and no existing photos
+                                is_primary=(i == 0 and not room.photos)
                             )
                             db.session.add(room_photo)
             
@@ -695,7 +785,6 @@ def admin_room_detail(room_id):
             }), 200
 
         elif request.method == 'DELETE':
-            # Delete associated photos and their files
             for photo in room.photos:
                 photo.delete_photo_file()
                 db.session.delete(photo)
@@ -723,10 +812,7 @@ def delete_room_photo(room_id, photo_id):
         if not photo:
             return jsonify({'message': 'Photo not found'}), 404
 
-        # Delete file from filesystem
         photo.delete_photo_file()
-        
-        # Delete record from database
         db.session.delete(photo)
         db.session.commit()
         
@@ -736,7 +822,6 @@ def delete_room_photo(room_id, photo_id):
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
-# Route untuk serve static files (foto)
 @app.route('/uploads/<path:filename>')
 def serve_uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
@@ -744,7 +829,6 @@ def serve_uploaded_file(filename):
 # Seed sample data
 def seed_data():
     try:
-        # Create admin user
         if not User.query.filter_by(email='admin@hotel.com').first():
             admin = User(
                 name='Admin User',
@@ -755,7 +839,6 @@ def seed_data():
             db.session.add(admin)
             print("✅ Admin user created")
 
-        # Create room types
         room_types_data = [
             {'name': 'Standard', 'description': 'Comfortable standard room'},
             {'name': 'Deluxe', 'description': 'Spacious deluxe room'},
@@ -772,7 +855,6 @@ def seed_data():
         
         db.session.commit()
 
-        # Create some rooms
         if not Room.query.first():
             rooms_data = [
                 {
@@ -835,6 +917,8 @@ if __name__ == '__main__':
     print("   POST http://localhost:5000/api/auth/login")
     print("   POST http://localhost:5000/api/bookings (JWT required)")
     print("   GET  http://localhost:5000/api/bookings/me (JWT required)")
+    print("   GET  http://localhost:5000/api/admin/bookings (Admin only)")
+    print("   PUT  http://localhost:5000/api/admin/bookings/ID/status (Admin only)")
     print("   GET  http://localhost:5000/api/admin/rooms (Admin only)")
     print("   POST http://localhost:5000/api/admin/rooms (Admin only)")
     
