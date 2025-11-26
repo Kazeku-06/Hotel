@@ -2,7 +2,7 @@
 import os
 import uuid
 from datetime import datetime
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -27,6 +27,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
+
 # Enable CORS for specific frontend origin with credentials and headers
 CORS(app,
      resources={r"/api/*": {"origins": "http://localhost:3000"}},
@@ -34,23 +35,11 @@ CORS(app,
      allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
-# Explicitly add automatic OPTIONS response for preflight CORS requests
-@app.before_request
-def handle_options_request():
-    from flask import request, make_response
-    if request.method == 'OPTIONS':
-        response = make_response()
-        response.status_code = 200
-        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-
 # Create upload directory
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'rooms'), exist_ok=True)
 
-# MODELS - SAMA DENGAN SEBELUMNYA
+# MODELS
 def generate_uuid():
     return str(uuid.uuid4())
 
@@ -100,9 +89,18 @@ class RoomPhoto(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
     room_id = db.Column(db.String(36), db.ForeignKey('rooms.id'), nullable=False)
     photo_path = db.Column(db.String(255), nullable=False)
+    is_primary = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     room = db.relationship('Room', backref='photos')
+    
+    def delete_photo_file(self):
+        """Hapus file foto dari filesystem"""
+        try:
+            if os.path.exists(self.photo_path):
+                os.remove(self.photo_path)
+        except Exception as e:
+            print(f"Error deleting photo file: {e}")
 
 class Facility(db.Model):
     __tablename__ = 'facilities'
@@ -237,23 +235,305 @@ def login():
 
 @app.route('/api/rooms', methods=['GET'])
 def get_rooms():
-    rooms = Room.query.all()
-    result = []
-    for room in rooms:
-        result.append({
-            'id': room.id,
-            'room_number': room.room_number,
-            'capacity': room.capacity,
-            'price_no_breakfast': room.price_no_breakfast,
-            'price_with_breakfast': room.price_with_breakfast,
-            'status': room.status,
-            'description': room.description,
-            'room_type': {
-                'id': room.room_type.id,
-                'name': room.room_type.name
-            } if room.room_type else None
-        })
-    return jsonify(result), 200
+    try:
+        rooms = Room.query.all()
+        result = []
+        for room in rooms:
+            # Get primary photo if exists
+            primary_photo = None
+            for photo in room.photos:
+                if photo.is_primary:
+                    primary_photo = f"/{photo.photo_path}"
+                    break
+            if not primary_photo and room.photos:
+                primary_photo = f"/{room.photos[0].photo_path}"
+                
+            result.append({
+                'id': room.id,
+                'room_number': room.room_number,
+                'capacity': room.capacity,
+                'price_no_breakfast': room.price_no_breakfast,
+                'price_with_breakfast': room.price_with_breakfast,
+                'status': room.status,
+                'description': room.description,
+                'primary_photo': primary_photo,
+                'room_type': {
+                    'id': room.room_type.id,
+                    'name': room.room_type.name
+                } if room.room_type else None
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+# Allowed extensions for images
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/api/admin/rooms', methods=['GET', 'POST'])
+@jwt_required()
+def admin_rooms():
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        # Check if user is admin
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        if request.method == 'GET':
+            rooms = Room.query.all()
+            result = []
+            for room in rooms:
+                # Get room photos dengan error handling
+                photos = []
+                try:
+                    for photo in room.photos:
+                        photos.append({
+                            'id': photo.id,
+                            'photo_path': f"/{photo.photo_path}",
+                            'is_primary': getattr(photo, 'is_primary', False)  # Safe access
+                        })
+                except Exception as photo_error:
+                    print(f"Error loading photos for room {room.id}: {photo_error}")
+                    # Continue without photos if there's an error
+                
+                result.append({
+                    'id': room.id,
+                    'room_number': room.room_number,
+                    'room_type_id': room.room_type_id,
+                    'room_type': {
+                        'id': room.room_type.id,
+                        'name': room.room_type.name,
+                        'description': room.room_type.description
+                    } if room.room_type else None,
+                    'capacity': room.capacity,
+                    'price_no_breakfast': room.price_no_breakfast,
+                    'price_with_breakfast': room.price_with_breakfast,
+                    'status': room.status,
+                    'description': room.description,
+                    'photos': photos,
+                    'created_at': room.created_at.isoformat() if room.created_at else None
+                })
+            return jsonify(result), 200
+
+        elif request.method == 'POST':
+            # Check content type
+            if request.content_type.startswith('multipart/form-data'):
+                # Handle form data dengan file upload
+                room_number = request.form.get('room_number')
+                room_type_id = request.form.get('room_type_id')
+                capacity = request.form.get('capacity')
+                price_no_breakfast = request.form.get('price_no_breakfast')
+                price_with_breakfast = request.form.get('price_with_breakfast')
+                status = request.form.get('status', 'available')
+                description = request.form.get('description', '')
+            else:
+                # Handle JSON data (fallback)
+                data = request.get_json()
+                room_number = data.get('room_number')
+                room_type_id = data.get('room_type_id')
+                capacity = data.get('capacity')
+                price_no_breakfast = data.get('price_no_breakfast')
+                price_with_breakfast = data.get('price_with_breakfast')
+                status = data.get('status', 'available')
+                description = data.get('description', '')
+            
+            # Validasi required fields
+            if not all([room_number, room_type_id, capacity, price_no_breakfast, price_with_breakfast]):
+                return jsonify({'message': 'All required fields must be filled'}), 400
+            
+            # Check if room number already exists
+            if Room.query.filter_by(room_number=room_number).first():
+                return jsonify({'message': 'Room number already exists'}), 400
+
+            # Create new room
+            room = Room(
+                room_number=room_number,
+                room_type_id=room_type_id,
+                capacity=int(capacity),
+                price_no_breakfast=float(price_no_breakfast),
+                price_with_breakfast=float(price_with_breakfast),
+                status=status,
+                description=description
+            )
+            
+            db.session.add(room)
+            db.session.flush()  # Get room ID without committing
+            
+            # Handle photo uploads (only for form-data)
+            if request.content_type.startswith('multipart/form-data'):
+                photos = request.files.getlist('photos')
+                if photos and photos[0].filename:  # Check if files were uploaded
+                    for i, photo in enumerate(photos):
+                        if photo and allowed_file(photo.filename):
+                            # Create unique filename
+                            filename = secure_filename(photo.filename)
+                            unique_filename = f"{uuid.uuid4()}_{filename}"
+                            photo_path = os.path.join(app.config['UPLOAD_FOLDER'], 'rooms', unique_filename)
+                            
+                            # Create directory if not exists
+                            os.makedirs(os.path.dirname(photo_path), exist_ok=True)
+                            
+                            # Save file
+                            photo.save(photo_path)
+                            
+                            # Create photo record
+                            room_photo = RoomPhoto(
+                                room_id=room.id,
+                                photo_path=photo_path,
+                                is_primary=(i == 0)  # First photo as primary
+                            )
+                            db.session.add(room_photo)
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Room created successfully',
+                'room': {
+                    'id': room.id,
+                    'room_number': room.room_number
+                }
+            }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+@app.route('/api/admin/rooms/<room_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
+def admin_room_detail(room_id):
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        room = Room.query.get(room_id)
+        if not room:
+            return jsonify({'message': 'Room not found'}), 404
+
+        if request.method == 'PUT':
+            # Check content type
+            if request.content_type.startswith('multipart/form-data'):
+                # Handle form data
+                room_number = request.form.get('room_number')
+                room_type_id = request.form.get('room_type_id')
+                capacity = request.form.get('capacity')
+                price_no_breakfast = request.form.get('price_no_breakfast')
+                price_with_breakfast = request.form.get('price_with_breakfast')
+                status = request.form.get('status')
+                description = request.form.get('description')
+            else:
+                # Handle JSON data (fallback)
+                data = request.get_json()
+                room_number = data.get('room_number')
+                room_type_id = data.get('room_type_id')
+                capacity = data.get('capacity')
+                price_no_breakfast = data.get('price_no_breakfast')
+                price_with_breakfast = data.get('price_with_breakfast')
+                status = data.get('status')
+                description = data.get('description')
+            
+            # Check if room number already exists (excluding current room)
+            if room_number and room_number != room.room_number:
+                if Room.query.filter_by(room_number=room_number).first():
+                    return jsonify({'message': 'Room number already exists'}), 400
+
+            # Update room data
+            if room_number: room.room_number = room_number
+            if room_type_id: room.room_type_id = room_type_id
+            if capacity: room.capacity = int(capacity)
+            if price_no_breakfast: room.price_no_breakfast = float(price_no_breakfast)
+            if price_with_breakfast: room.price_with_breakfast = float(price_with_breakfast)
+            if status: room.status = status
+            if description is not None: room.description = description
+            
+            # Handle new photo uploads (only for form-data)
+            if request.content_type.startswith('multipart/form-data'):
+                photos = request.files.getlist('photos')
+                if photos and photos[0].filename:
+                    for i, photo in enumerate(photos):
+                        if photo and allowed_file(photo.filename):
+                            # Create unique filename
+                            filename = secure_filename(photo.filename)
+                            unique_filename = f"{uuid.uuid4()}_{filename}"
+                            photo_path = os.path.join(app.config['UPLOAD_FOLDER'], 'rooms', unique_filename)
+                            
+                            # Create directory if not exists
+                            os.makedirs(os.path.dirname(photo_path), exist_ok=True)
+                            
+                            # Save file
+                            photo.save(photo_path)
+                            
+                            # Create photo record
+                            room_photo = RoomPhoto(
+                                room_id=room.id,
+                                photo_path=photo_path,
+                                is_primary=(i == 0 and not room.photos)  # Primary if first photo and no existing photos
+                            )
+                            db.session.add(room_photo)
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Room updated successfully',
+                'room': {
+                    'id': room.id,
+                    'room_number': room.room_number
+                }
+            }), 200
+
+        elif request.method == 'DELETE':
+            # Delete associated photos and their files
+            for photo in room.photos:
+                photo.delete_photo_file()
+                db.session.delete(photo)
+            
+            db.session.delete(room)
+            db.session.commit()
+            
+            return jsonify({'message': 'Room deleted successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+@app.route('/api/admin/rooms/<room_id>/photos/<photo_id>', methods=['DELETE'])
+@jwt_required()
+def delete_room_photo(room_id, photo_id):
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        photo = RoomPhoto.query.filter_by(id=photo_id, room_id=room_id).first()
+        if not photo:
+            return jsonify({'message': 'Photo not found'}), 404
+
+        # Delete file from filesystem
+        photo.delete_photo_file()
+        
+        # Delete record from database
+        db.session.delete(photo)
+        db.session.commit()
+        
+        return jsonify({'message': 'Photo deleted successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+# Route untuk serve static files (foto)
+@app.route('/uploads/<path:filename>')
+def serve_uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # Seed sample data
 def seed_data():
@@ -346,5 +626,7 @@ if __name__ == '__main__':
     print("   GET  http://localhost:5000/api/rooms")
     print("   POST http://localhost:5000/api/auth/register")
     print("   POST http://localhost:5000/api/auth/login")
+    print("   GET  http://localhost:5000/api/admin/rooms (Admin only)")
+    print("   POST http://localhost:5000/api/admin/rooms (Admin only)")
     
     app.run(debug=True, port=5000)

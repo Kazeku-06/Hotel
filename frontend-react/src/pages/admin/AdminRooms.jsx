@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { roomsAPI } from '../../api/rooms'
 import { formatCurrency } from '../../utils/formatCurrency'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 export const AdminRooms = () => {
   const [showModal, setShowModal] = useState(false)
   const [editingRoom, setEditingRoom] = useState(null)
+  const [selectedFiles, setSelectedFiles] = useState([])
   const [formData, setFormData] = useState({
     room_number: '',
     room_type_id: '',
@@ -18,21 +19,36 @@ export const AdminRooms = () => {
   
   const queryClient = useQueryClient()
 
-  // Query untuk rooms dan room types
+  // Query untuk admin rooms dengan auth
   const { data: rooms, isLoading, error } = useQuery({
     queryKey: ['admin-rooms'],
-    queryFn: () => roomsAPI.getRooms()
+    queryFn: () => roomsAPI.getAdminRooms(),
+    retry: 1
   })
 
-  const { data: roomTypes } = useQuery({
-    queryKey: ['room-types'],
-    queryFn: () => roomsAPI.getRoomTypes()
-  })
-  
+  // Extract room types dari rooms data
+  const availableRoomTypes = useMemo(() => {
+    if (!rooms?.data) return []
+    
+    const roomTypesMap = {}
+    rooms.data.forEach(room => {
+      if (room.room_type && room.room_type.id && room.room_type.name) {
+        roomTypesMap[room.room_type.id] = {
+          id: room.room_type.id,
+          name: room.room_type.name,
+          description: room.room_type.description
+        }
+      }
+    })
+    
+    const roomTypes = Object.values(roomTypesMap)
+    console.log('🎯 Extracted Room Types:', roomTypes)
+    return roomTypes
+  }, [rooms?.data])
 
-  // Mutation untuk create room
+  // Mutation untuk create room dengan form data
   const createRoomMutation = useMutation({
-    mutationFn: (roomData) => roomsAPI.createRoom(roomData),
+    mutationFn: (formDataWithFiles) => roomsAPI.createRoomWithPhotos(formDataWithFiles),
     onSuccess: () => {
       queryClient.invalidateQueries(['admin-rooms'])
       setShowModal(false)
@@ -43,9 +59,9 @@ export const AdminRooms = () => {
     }
   })
 
-  // Mutation untuk update room
+  // Mutation untuk update room dengan form data
   const updateRoomMutation = useMutation({
-    mutationFn: ({ id, data }) => roomsAPI.updateRoom(id, data),
+    mutationFn: ({ id, formData }) => roomsAPI.updateRoomWithPhotos(id, formData),
     onSuccess: () => {
       queryClient.invalidateQueries(['admin-rooms'])
       setShowModal(false)
@@ -68,6 +84,17 @@ export const AdminRooms = () => {
     }
   })
 
+  // Mutation untuk delete photo
+  const deletePhotoMutation = useMutation({
+    mutationFn: ({ roomId, photoId }) => roomsAPI.deleteRoomPhoto(roomId, photoId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['admin-rooms'])
+    },
+    onError: (error) => {
+      alert(error.response?.data?.message || 'Failed to delete photo')
+    }
+  })
+
   const getStatusColor = (status) => {
     return status === 'available' 
       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -84,6 +111,7 @@ export const AdminRooms = () => {
       description: '',
       status: 'available'
     })
+    setSelectedFiles([])
     setEditingRoom(null)
   }
 
@@ -98,6 +126,7 @@ export const AdminRooms = () => {
       description: room.description || '',
       status: room.status
     })
+    setSelectedFiles([])
     setShowModal(true)
   }
 
@@ -107,13 +136,43 @@ export const AdminRooms = () => {
     }
   }
 
+  const handleDeletePhoto = (roomId, photoId, e) => {
+    e.stopPropagation()
+    if (window.confirm('Are you sure you want to delete this photo?')) {
+      deletePhotoMutation.mutate({ roomId, photoId })
+    }
+  }
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files)
+    setSelectedFiles(prev => [...prev, ...files])
+  }
+
+  const removeSelectedFile = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     
+    const formDataToSend = new FormData()
+    formDataToSend.append('room_number', formData.room_number)
+    formDataToSend.append('room_type_id', formData.room_type_id)
+    formDataToSend.append('capacity', formData.capacity.toString())
+    formDataToSend.append('price_no_breakfast', formData.price_no_breakfast.toString())
+    formDataToSend.append('price_with_breakfast', formData.price_with_breakfast.toString())
+    formDataToSend.append('description', formData.description)
+    formDataToSend.append('status', formData.status)
+    
+    // Append files
+    selectedFiles.forEach(file => {
+      formDataToSend.append('photos', file)
+    })
+    
     if (editingRoom) {
-      updateRoomMutation.mutate({ id: editingRoom.id, data: formData })
+      updateRoomMutation.mutate({ id: editingRoom.id, formData: formDataToSend })
     } else {
-      createRoomMutation.mutate(formData)
+      createRoomMutation.mutate(formDataToSend)
     }
   }
 
@@ -122,6 +181,12 @@ export const AdminRooms = () => {
       ...formData,
       [e.target.name]: e.target.value
     })
+  }
+
+  // Debug error
+  if (error) {
+    console.error('Error details:', error)
+    console.error('Error response:', error.response)
   }
 
   if (isLoading) {
@@ -151,7 +216,7 @@ export const AdminRooms = () => {
               Manage Rooms
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
-              View and manage all hotel rooms
+              View and manage all hotel rooms | Room Types: {availableRoomTypes.length}
             </p>
           </div>
           <button 
@@ -167,93 +232,137 @@ export const AdminRooms = () => {
 
         {error && (
           <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-6">
-            Failed to load rooms
+            <p className="font-semibold">Failed to load rooms</p>
+            <p className="text-sm mt-1">
+              {error.response?.data?.message || error.message}
+            </p>
+            <p className="text-xs mt-2">
+              Status: {error.response?.status} | 
+              Please check if you're logged in as admin
+            </p>
           </div>
         )}
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Room
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Capacity
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Price
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {rooms?.data.map((room) => (
-                  <tr key={room.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
-                          <span className="text-gray-600 dark:text-gray-300">🏨</span>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {room.room_number}
+        {!error && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Room
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Photos
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Capacity
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Price
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {rooms?.data?.map((room) => (
+                    <tr key={room.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-300">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                            {room.photos && room.photos.length > 0 ? (
+                              <img 
+                                src={`http://localhost:5000${room.photos.find(p => p.is_primary)?.photo_path || room.photos[0].photo_path}`}
+                                alt={room.room_number}
+                                className="h-10 w-10 rounded-lg object-cover"
+                              />
+                            ) : (
+                              <span className="text-gray-600 dark:text-gray-300">🏨</span>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                              {room.room_number}
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              {room.photos?.length || 0} photos
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {room.room_type?.name}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {room.capacity} people
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {formatCurrency(room.price_no_breakfast)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(room.status)}`}>
-                        {room.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button 
-                        onClick={() => handleEdit(room)}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3 transition-colors duration-300"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(room)}
-                        disabled={deleteRoomMutation.isLoading}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-300 disabled:opacity-50"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {room.room_type?.name}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex -space-x-2">
+                          {room.photos?.slice(0, 3).map((photo) => (
+                            <div key={photo.id} className="relative">
+                              <img 
+                                src={`http://localhost:5000${photo.photo_path}`}
+                                alt="Room"
+                                className="h-8 w-8 rounded-full border-2 border-white dark:border-gray-800 object-cover"
+                              />
+                              {photo.is_primary && (
+                                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gold-500 rounded-full border-2 border-white"></div>
+                              )}
+                            </div>
+                          ))}
+                          {room.photos?.length > 3 && (
+                            <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs text-gray-600 dark:text-gray-300 border-2 border-white dark:border-gray-800">
+                              +{room.photos.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {room.capacity} people
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {formatCurrency(room.price_no_breakfast)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(room.status)}`}>
+                          {room.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button 
+                          onClick={() => handleEdit(room)}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3 transition-colors duration-300"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(room)}
+                          disabled={deleteRoomMutation.isLoading}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-300 disabled:opacity-50"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
-        {rooms?.data.length === 0 && (
+        {!error && rooms?.data?.length === 0 && (
           <div className="text-center py-12">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 max-w-md mx-auto">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
@@ -269,7 +378,7 @@ export const AdminRooms = () => {
         {/* Add/Edit Room Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
@@ -304,7 +413,7 @@ export const AdminRooms = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Room Type *
+                      Room Type * ({availableRoomTypes.length} available)
                     </label>
                     <select
                       name="room_type_id"
@@ -314,12 +423,98 @@ export const AdminRooms = () => {
                       className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
                     >
                       <option value="">Select Room Type</option>
-                      {roomTypes?.data?.map((type) => (
+                      {availableRoomTypes.map((type) => (
                         <option key={type.id} value={type.id}>
                           {type.name}
                         </option>
                       ))}
                     </select>
+                    {availableRoomTypes.length === 0 && (
+                      <p className="text-red-500 text-sm mt-1">
+                        No room types available. Please check if rooms are loaded.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Photo Upload Section */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Room Photos
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        id="photo-upload"
+                      />
+                      <label
+                        htmlFor="photo-upload"
+                        className="cursor-pointer bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg transition-colors duration-300 inline-block mb-3"
+                      >
+                        Choose Photos
+                      </label>
+                      
+                      {/* Selected Files Preview */}
+                      {selectedFiles.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            Selected files ({selectedFiles.length}):
+                          </p>
+                          <div className="space-y-2">
+                            {selectedFiles.map((file, index) => (
+                              <div key={index} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                                <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                                  {file.name}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeSelectedFile(index)}
+                                  className="text-red-500 hover:text-red-700 ml-2"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Existing Photos for Edit Mode */}
+                      {editingRoom && editingRoom.photos && editingRoom.photos.length > 0 && (
+                        <div className="mt-3">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            Current photos:
+                          </p>
+                          <div className="grid grid-cols-4 gap-2">
+                            {editingRoom.photos.map((photo) => (
+                              <div key={photo.id} className="relative group">
+                                <img 
+                                  src={`http://localhost:5000${photo.photo_path}`}
+                                  alt="Room"
+                                  className="h-16 w-16 object-cover rounded border-2 border-gray-300 dark:border-gray-600"
+                                />
+                                {photo.is_primary && (
+                                  <div className="absolute top-0 right-0 w-3 h-3 bg-gold-500 rounded-full border-2 border-white"></div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeletePhoto(editingRoom.id, photo.id, e)}
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Upload room photos (PNG, JPG, JPEG, GIF, WEBP). First photo will be set as primary.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -371,6 +566,7 @@ export const AdminRooms = () => {
                         onChange={handleChange}
                         required
                         min="0"
+                        step="1000"
                         className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
                         placeholder="500000"
                       />
@@ -386,6 +582,7 @@ export const AdminRooms = () => {
                         onChange={handleChange}
                         required
                         min="0"
+                        step="1000"
                         className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
                         placeholder="600000"
                       />
@@ -419,7 +616,7 @@ export const AdminRooms = () => {
                     </button>
                     <button
                       type="submit"
-                      disabled={createRoomMutation.isLoading || updateRoomMutation.isLoading}
+                      disabled={createRoomMutation.isLoading || updateRoomMutation.isLoading || availableRoomTypes.length === 0}
                       className="flex-1 bg-gold-500 hover:bg-gold-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300"
                     >
                       {(createRoomMutation.isLoading || updateRoomMutation.isLoading) ? (
