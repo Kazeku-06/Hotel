@@ -266,6 +266,47 @@ def get_rooms():
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 
+# ==== TAMBAHKAN INI - Single Room Detail ====
+@app.route('/api/rooms/<room_id>', methods=['GET'])
+def get_room(room_id):
+    try:
+        room = Room.query.get(room_id)
+        if not room:
+            return jsonify({'message': 'Room not found'}), 404
+        
+        # Get room photos
+        photos = []
+        for photo in room.photos:
+            photos.append({
+                'id': photo.id,
+                'photo_path': f"/{photo.photo_path}",
+                'is_primary': getattr(photo, 'is_primary', False)
+            })
+        
+        result = {
+            'id': room.id,
+            'room_number': room.room_number,
+            'room_type_id': room.room_type_id,
+            'room_type': {
+                'id': room.room_type.id,
+                'name': room.room_type.name,
+                'description': room.room_type.description
+            } if room.room_type else None,
+            'capacity': room.capacity,
+            'price_no_breakfast': room.price_no_breakfast,
+            'price_with_breakfast': room.price_with_breakfast,
+            'status': room.status,
+            'description': room.description,
+            'photos': photos,
+            'created_at': room.created_at.isoformat() if room.created_at else None
+        }
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+# ==== ADMIN ROUTES ====
 # Allowed extensions for images
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -624,6 +665,7 @@ if __name__ == '__main__':
     print("💡 Test endpoints:")
     print("   GET  http://localhost:5000/")
     print("   GET  http://localhost:5000/api/rooms")
+    print("   GET  http://localhost:5000/api/rooms/ROOM_ID (NEW!)")
     print("   POST http://localhost:5000/api/auth/register")
     print("   POST http://localhost:5000/api/auth/login")
     print("   GET  http://localhost:5000/api/admin/rooms (Admin only)")
