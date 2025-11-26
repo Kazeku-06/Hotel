@@ -109,3 +109,5 @@ export const AdminRatings = () => {
     </div>
   )
 }
+
+export default AdminRatings

@@ -4,10 +4,185 @@ import os
 from werkzeug.utils import secure_filename
 import uuid
 from app import db
-from app.models import Room, RoomType, RoomPhoto, Facility, FacilityRoom, Booking, Rating
 from app.utils import admin_required
 
 admin_bp = Blueprint('admin', __name__)
+
+@admin_bp.route('/rooms', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_rooms():
+    from app.models import Room, RoomType  # IMPORT DI DALAM FUNGSI
+    
+    rooms = Room.query.all()
+    result = []
+    for room in rooms:
+        result.append({
+            'id': room.id,
+            'room_type_id': room.room_type_id,
+            'room_number': room.room_number,
+            'capacity': room.capacity,
+            'price_no_breakfast': room.price_no_breakfast,
+            'price_with_breakfast': room.price_with_breakfast,
+            'status': room.status,
+            'description': room.description,
+            'room_type': {
+                'id': room.room_type.id,
+                'name': room.room_type.name,
+                'description': room.room_type.description
+            } if room.room_type else None
+        })
+    return jsonify(result), 200
+
+@admin_bp.route('/rooms', methods=['POST'])
+@jwt_required()
+@admin_required
+def create_room():
+    from app.models import Room  # IMPORT DI DALAM FUNGSI
+    
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['room_number', 'room_type_id', 'capacity', 'price_no_breakfast', 'price_with_breakfast']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'message': f'{field} is required'}), 400
+        
+        # Check if room number already exists
+        existing_room = Room.query.filter_by(room_number=data['room_number']).first()
+        if existing_room:
+            return jsonify({'message': 'Room number already exists'}), 400
+        
+        # Create new room
+        room = Room(
+            room_number=data['room_number'],
+            room_type_id=data['room_type_id'],
+            capacity=int(data['capacity']),
+            price_no_breakfast=float(data['price_no_breakfast']),
+            price_with_breakfast=float(data['price_with_breakfast']),
+            description=data.get('description', ''),
+            status='available'
+        )
+        
+        db.session.add(room)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Room created successfully',
+            'room': {
+                'id': room.id,
+                'room_number': room.room_number,
+                'room_type_id': room.room_type_id,
+                'capacity': room.capacity,
+                'price_no_breakfast': room.price_no_breakfast,
+                'price_with_breakfast': room.price_with_breakfast,
+                'status': room.status,
+                'description': room.description
+            }
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+    
+# Tambahkan di admin.py setelah import
+@admin_bp.route('/room-types', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_room_types():
+    from app.models import RoomType
+    
+    try:
+        room_types = RoomType.query.all()
+        result = []
+        for rt in room_types:
+            result.append({
+                'id': rt.id,
+                'name': rt.name,
+                'description': rt.description
+            })
+        print(f"✅ Found {len(result)} room types")  # Debug log
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"❌ Error getting room types: {e}")  # Debug log
+        return jsonify({'message': str(e)}), 500
+        
+
+@admin_bp.route('/rooms/<room_id>', methods=['PUT'])
+@jwt_required()
+@admin_required
+def update_room(room_id):
+    from app.models import Room  # IMPORT DI DALAM FUNGSI
+    
+    try:
+        room = Room.query.get(room_id)
+        if not room:
+            return jsonify({'message': 'Room not found'}), 404
+        
+        data = request.get_json()
+        
+        # Check if room number already exists (excluding current room)
+        if data.get('room_number') and data['room_number'] != room.room_number:
+            existing_room = Room.query.filter_by(room_number=data['room_number']).first()
+            if existing_room:
+                return jsonify({'message': 'Room number already exists'}), 400
+        
+        # Update room fields
+        if 'room_number' in data:
+            room.room_number = data['room_number']
+        if 'room_type_id' in data:
+            room.room_type_id = data['room_type_id']
+        if 'capacity' in data:
+            room.capacity = int(data['capacity'])
+        if 'price_no_breakfast' in data:
+            room.price_no_breakfast = float(data['price_no_breakfast'])
+        if 'price_with_breakfast' in data:
+            room.price_with_breakfast = float(data['price_with_breakfast'])
+        if 'description' in data:
+            room.description = data['description']
+        if 'status' in data:
+            room.status = data['status']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Room updated successfully',
+            'room': {
+                'id': room.id,
+                'room_number': room.room_number,
+                'room_type_id': room.room_type_id,
+                'capacity': room.capacity,
+                'price_no_breakfast': room.price_no_breakfast,
+                'price_with_breakfast': room.price_with_breakfast,
+                'status': room.status,
+                'description': room.description
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+@admin_bp.route('/rooms/<room_id>', methods=['DELETE'])
+@jwt_required()
+@admin_required
+def delete_room(room_id):
+    from app.models import Room  # IMPORT DI DALAM FUNGSI
+    
+    try:
+        room = Room.query.get(room_id)
+        if not room:
+            return jsonify({'message': 'Room not found'}), 404
+        
+        db.session.delete(room)
+        db.session.commit()
+        
+        return jsonify({'message': 'Room deleted successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 

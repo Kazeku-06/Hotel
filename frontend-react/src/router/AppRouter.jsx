@@ -1,16 +1,18 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Home } from '../pages/Home'
-import { RoomDetail } from '../pages/RoomDetail'
-import { Login } from '../pages/Login'
-import { Register } from '../pages/Register'
-import { Checkout } from '../pages/Checkout'
-import { MemberBookings } from '../pages/MemberBookings'
-import { MemberRate } from '../pages/MemberRate'
-import { AdminDashboard } from '../pages/admin/AdminDashboard'
-import { AdminRooms } from '../pages/admin/AdminRooms'
-import { AdminBookings } from '../pages/admin/AdminBookings'
-import { AdminRatings } from '../pages/admin/AdminRatings'
+
+// Import dengan default exports
+import Home from '../pages/Home'
+import RoomDetail from '../pages/RoomDetail'
+import Login from '../pages/Login'
+import Register from '../pages/Register'
+import Checkout from '../pages/Checkout'
+import MemberBookings from '../pages/MemberBookings'
+import MemberRate from '../pages/MemberRate'
+import AdminDashboard from '../pages/admin/AdminDashboard'
+import AdminRooms from '../pages/admin/AdminRooms'
+import AdminBookings from '../pages/admin/AdminBookings'
+import AdminRatings from '../pages/admin/AdminRatings'
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { isAuthenticated, isAdmin, loading } = useAuth()
@@ -120,3 +122,5 @@ export const AppRouter = () => {
     </Routes>
   )
 }
+
+export default AppRouter
