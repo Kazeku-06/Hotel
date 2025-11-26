@@ -1,48 +1,106 @@
-import os
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from flask_jwt_extended import JWTManager
-from flask_cors import CORS
-from dotenv import load_dotenv
+from app import db
+import uuid
+from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
-# Load environment variables
-load_dotenv()
+def generate_uuid():
+    return str(uuid.uuid4())
 
-db = SQLAlchemy()
-migrate = Migrate()
-jwt = JWTManager()
+class User(db.Model):
+    __tablename__ = 'users'
+    
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    phone = db.Column(db.String(20))
+    role = db.Column(db.Enum('admin', 'member'), default='member')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def set_password(self, password):
+        self.password = generate_password_hash(password)
+    
+    def check_password(self, password):
+        return check_password_hash(self.password, password)
 
-def create_app():
-    app = Flask(__name__)
+class RoomType(db.Model):
+    __tablename__ = 'room_types'
     
-    # Configuration
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'dev-secret-key'
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'mysql+pymysql://root:password@localhost/hotel_db'
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-key'
-    app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../uploads')
-    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Room(db.Model):
+    __tablename__ = 'rooms'
     
-    # Initialize extensions
-    db.init_app(app)
-    migrate.init_app(app, db)
-    jwt.init_app(app)
-    CORS(app)
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    room_type_id = db.Column(db.String(36), db.ForeignKey('room_types.id'), nullable=False)
+    room_number = db.Column(db.String(10), unique=True, nullable=False)
+    capacity = db.Column(db.Integer, nullable=False)
+    price_no_breakfast = db.Column(db.Float, nullable=False)
+    price_with_breakfast = db.Column(db.Float, nullable=False)
+    status = db.Column(db.Enum('available', 'unavailable'), default='available')
+    description = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class RoomPhoto(db.Model):
+    __tablename__ = 'room_photos'
     
-    # Create upload directory
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    room_id = db.Column(db.String(36), db.ForeignKey('rooms.id'), nullable=False)
+    photo_path = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Facility(db.Model):
+    __tablename__ = 'facilities'
     
-    # Import models after db initialization to avoid circular imports
-    from app import models
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    name = db.Column(db.String(100), nullable=False)
+    icon = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class FacilityRoom(db.Model):
+    __tablename__ = 'facility_room'
     
-    # Register blueprints
-    from app.routes.auth import auth_bp
-    from app.routes.admin import admin_bp
-    from app.routes.main import main_bp
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    room_id = db.Column(db.String(36), db.ForeignKey('rooms.id'), nullable=False)
+    facility_id = db.Column(db.String(36), db.ForeignKey('facilities.id'), nullable=False)
+
+class Booking(db.Model):
+    __tablename__ = 'bookings'
     
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(admin_bp, url_prefix='/api/admin')
-    app.register_blueprint(main_bp, url_prefix='/api')
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    nik = db.Column(db.String(20), nullable=False)
+    guest_name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    check_in = db.Column(db.Date, nullable=False)
+    check_out = db.Column(db.Date, nullable=False)
+    total_guests = db.Column(db.Integer, nullable=False)
+    payment_method = db.Column(db.String(50), nullable=False)
+    total_price = db.Column(db.Float, nullable=False)
+    status = db.Column(db.Enum('pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled'), default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class BookingRoom(db.Model):
+    __tablename__ = 'booking_rooms'
     
-    return app
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    booking_id = db.Column(db.String(36), db.ForeignKey('bookings.id'), nullable=False)
+    room_id = db.Column(db.String(36), db.ForeignKey('rooms.id'), nullable=False)
+    room_type = db.Column(db.String(100), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    breakfast_option = db.Column(db.Enum('with', 'without'), nullable=False)
+    price_per_night = db.Column(db.Float, nullable=False)
+    subtotal = db.Column(db.Float, nullable=False)
+
+class Rating(db.Model):
+    __tablename__ = 'ratings'
+    
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    booking_id = db.Column(db.String(36), db.ForeignKey('bookings.id'), nullable=False)
+    star = db.Column(db.Integer, nullable=False)
+    comment = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

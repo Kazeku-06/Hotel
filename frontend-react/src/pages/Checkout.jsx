@@ -347,3 +347,5 @@ export const Checkout = () => {
     </div>
   )
 }
+
+export default Checkout

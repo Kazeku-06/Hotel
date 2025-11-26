@@ -6,8 +6,7 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    from app.models import User
-    from app.schemas import user_schema
+    from app.models import User  # IMPORT DI DALAM FUNGSI
     
     try:
         data = request.get_json()
@@ -17,20 +16,24 @@ def register():
             return jsonify({'message': 'Email already registered'}), 400
         
         # Create new user
-        user_data = user_schema.load(data)
         user = User(
-            name=user_data['name'],
-            email=user_data['email'],
-            phone=user_data.get('phone', '')
+            name=data.get('name'),
+            email=data.get('email'),
+            phone=data.get('phone', '')
         )
-        user.set_password(user_data['password'])
+        user.set_password(data.get('password'))
         
         db.session.add(user)
         db.session.commit()
         
         return jsonify({
             'message': 'User registered successfully',
-            'user': user_schema.dump(user)
+            'user': {
+                'id': user.id,
+                'name': user.name,
+                'email': user.email,
+                'role': user.role
+            }
         }), 201
         
     except Exception as e:
@@ -38,7 +41,7 @@ def register():
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    from app.models import User
+    from app.models import User  # IMPORT DI DALAM FUNGSI
     
     try:
         data = request.get_json()
@@ -70,8 +73,7 @@ def login():
 @auth_bp.route('/me', methods=['GET'])
 @jwt_required()
 def get_me():
-    from app.models import User
-    from app.schemas import user_schema
+    from app.models import User  # IMPORT DI DALAM FUNGSI
     
     current_user_id = get_jwt_identity()
     user = User.query.get(current_user_id)
@@ -79,4 +81,10 @@ def get_me():
     if not user:
         return jsonify({'message': 'User not found'}), 404
     
-    return jsonify(user_schema.dump(user)), 200
+    return jsonify({
+        'id': user.id,
+        'name': user.name,
+        'email': user.email,
+        'phone': user.phone,
+        'role': user.role
+    }), 200

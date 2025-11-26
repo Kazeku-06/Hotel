@@ -115,3 +115,5 @@ export const RoomFilter = ({ onFilter, initialFilters = {} }) => {
     </div>
   )
 }
+
+export default RoomFilter

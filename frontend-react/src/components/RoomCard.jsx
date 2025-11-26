@@ -53,3 +53,5 @@ export const RoomCard = ({ room }) => {
     </div>
   )
 }
+
+export default RoomCard

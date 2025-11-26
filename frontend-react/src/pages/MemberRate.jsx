@@ -136,3 +136,4 @@ export const MemberRate = () => {
     </div>
   )
 }
+export default MemberRate

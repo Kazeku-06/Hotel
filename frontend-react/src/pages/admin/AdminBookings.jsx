@@ -146,3 +146,5 @@ export const AdminBookings = () => {
     </div>
   )
 }
+
+export default AdminBookings

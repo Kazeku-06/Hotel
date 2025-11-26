@@ -146,3 +146,5 @@ export const MemberBookings = () => {
     </div>
   )
 }
+
+export default MemberBookings
