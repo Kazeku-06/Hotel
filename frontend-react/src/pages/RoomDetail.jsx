@@ -18,10 +18,12 @@ export const RoomDetail = () => {
     retry: 1
   })
 
-  // Debug
+  // Debug lebih detail
+  console.log('🔍 RoomDetail Debug:')
   console.log('Room ID:', id)
-  console.log('Room data:', room)
+  console.log('Full response:', room)
   console.log('Error:', error)
+  console.log('Loading:', isLoading)
 
   if (isLoading) {
     return (
@@ -44,7 +46,7 @@ export const RoomDetail = () => {
   }
 
   if (error) {
-    console.error('Error details:', error.response)
+    console.error('❌ Error details:', error.response)
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -52,7 +54,7 @@ export const RoomDetail = () => {
             {error.response?.status === 404 ? 'Room not found' : 'Error loading room'}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            {error.response?.data?.message || 'Please try again later'}
+            {error.response?.data?.message || error.message || 'Please try again later'}
           </p>
           <Link
             to="/"
@@ -65,13 +67,19 @@ export const RoomDetail = () => {
     )
   }
 
-  if (!room?.data) {
+  // PERBAIKAN: Akses data langsung, bukan room.data
+  const roomData = room?.data || room
+
+  if (!roomData) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
             Room not found
           </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            The room you're looking for doesn't exist or has been removed.
+          </p>
           <Link
             to="/"
             className="bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-lg transition-colors duration-300"
@@ -83,7 +91,8 @@ export const RoomDetail = () => {
     )
   }
 
-  const roomData = room.data
+  console.log('✅ Room data loaded:', roomData)
+
   const primaryPhoto = roomData.photos?.find(p => p.is_primary) || roomData.photos?.[0]
   const photoUrl = primaryPhoto ? `http://localhost:5000${primaryPhoto.photo_path}` : null
 
