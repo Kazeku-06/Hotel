@@ -265,6 +265,139 @@ def get_rooms():
         return jsonify(result), 200
     except Exception as e:
         return jsonify({'message': str(e)}), 500
+    
+# ==== RATINGS ROUTES ====
+@app.route('/api/ratings', methods=['GET', 'POST'])
+@jwt_required()
+def ratings():
+    try:
+        current_user_id = get_jwt_identity()
+        
+        if request.method == 'GET':
+            # Get all ratings with user and booking info
+            ratings = Rating.query.order_by(Rating.created_at.desc()).all()
+            
+            result = []
+            for rating in ratings:
+                result.append({
+                    'id': rating.id,
+                    'user': {
+                        'id': rating.user.id,
+                        'name': rating.user.name,
+                        'email': rating.user.email
+                    } if rating.user else None,
+                    'booking_id': rating.booking_id,
+                    'star': rating.star,
+                    'comment': rating.comment,
+                    'created_at': rating.created_at.isoformat() if rating.created_at else None
+                })
+            
+            return jsonify({
+                'success': True,
+                'data': result,
+                'count': len(result)
+            }), 200
+            
+        elif request.method == 'POST':
+            data = request.get_json()
+            
+            # Validate required fields
+            required_fields = ['booking_id', 'star']
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({'message': f'Missing required field: {field}'}), 400
+            
+            # Check if rating already exists for this booking
+            existing_rating = Rating.query.filter_by(
+                booking_id=data['booking_id']
+            ).first()
+            
+            if existing_rating:
+                return jsonify({'message': 'Rating already submitted for this booking'}), 400
+            
+            # Check if booking exists and belongs to user
+            booking = Booking.query.filter_by(
+                id=data['booking_id'],
+                user_id=current_user_id
+            ).first()
+            
+            if not booking:
+                return jsonify({'message': 'Booking not found or access denied'}), 404
+            
+            # Validate star rating (1-5)
+            star = int(data['star'])
+            if star < 1 or star > 5:
+                return jsonify({'message': 'Star rating must be between 1 and 5'}), 400
+            
+            # Create new rating
+            rating = Rating(
+                user_id=current_user_id,
+                booking_id=data['booking_id'],
+                star=star,
+                comment=data.get('comment', '')
+            )
+            
+            db.session.add(rating)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Rating submitted successfully',
+                'data': {
+                    'id': rating.id,
+                    'star': rating.star,
+                    'comment': rating.comment,
+                    'created_at': rating.created_at.isoformat()
+                }
+            }), 201
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+# Admin ratings endpoint
+@app.route('/api/admin/ratings', methods=['GET'])
+@jwt_required()
+def admin_ratings():
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        # Check if user is admin
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        ratings = Rating.query.order_by(Rating.created_at.desc()).all()
+        
+        result = []
+        for rating in ratings:
+            result.append({
+                'id': rating.id,
+                'user': {
+                    'id': rating.user.id,
+                    'name': rating.user.name,
+                    'email': rating.user.email
+                } if rating.user else None,
+                'booking_id': rating.booking_id,
+                'star': rating.star,
+                'comment': rating.comment,
+                'created_at': rating.created_at.isoformat() if rating.created_at else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': result,
+            'count': len(result)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500    
 
 # ==== Single Room Detail ====
 @app.route('/api/rooms/<room_id>', methods=['GET'])

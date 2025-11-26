@@ -16,24 +16,40 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const savedUser = localStorage.getItem('user')
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('token')
+        const savedUser = localStorage.getItem('user')
 
-    if (token && savedUser) {
-      setUser(JSON.parse(savedUser))
-      // Verify token is still valid
-      authAPI.getMe()
-        .then(response => {
-          setUser(response.data)
-          localStorage.setItem('user', JSON.stringify(response.data))
-        })
-        .catch(() => {
+        if (!token) {
+          setLoading(false)
+          return
+        }
+
+        // Jika ada savedUser, gunakan dulu untuk immediate UI
+        if (savedUser) {
+          setUser(JSON.parse(savedUser))
+        }
+
+        // Always verify token with backend
+        const response = await authAPI.getMe()
+        setUser(response.data)
+        localStorage.setItem('user', JSON.stringify(response.data))
+      } catch (error) {
+        console.error('Auth check failed:', error)
+        
+        // Only logout on specific errors (401 Unauthorized)
+        if (error.response?.status === 401) {
           logout()
-        })
-        .finally(() => setLoading(false))
-    } else {
-      setLoading(false)
+        }
+        // Untuk error lainnya (network error, server down, dll), biarkan user tetap login
+        // dengan data yang ada di localStorage
+      } finally {
+        setLoading(false)
+      }
     }
+
+    checkAuth()
   }, [])
 
   const login = async (email, password) => {
@@ -75,13 +91,14 @@ export const AuthProvider = ({ children }) => {
     setUser(null)
   }
 
+  // Update isAuthenticated untuk double check dengan localStorage
   const value = {
     user,
     login,
     register,
     logout,
     loading,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!localStorage.getItem('token'),
     isAdmin: user?.role === 'admin',
     isMember: user?.role === 'member'
   }
