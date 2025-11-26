@@ -307,6 +307,7 @@ def get_room(room_id):
         return jsonify({'message': str(e)}), 500
 
 # ==== BOOKINGS ROUTES ====
+# ==== BOOKINGS ROUTES ====
 @app.route('/api/bookings', methods=['POST'])
 @jwt_required()
 def create_booking():
@@ -314,13 +315,25 @@ def create_booking():
         current_user_id = get_jwt_identity()
         data = request.get_json()
         
+        print("🔍 DEBUG - Received booking data:", data)
+        
         # Validate required fields
         required_fields = ['nik', 'guest_name', 'phone', 'check_in', 'check_out', 'total_guests', 'payment_method', 'rooms']
         for field in required_fields:
             if field not in data:
                 return jsonify({'message': f'Missing required field: {field}'}), 400
         
-        # Calculate total price
+        # Calculate number of nights
+        check_in_date = datetime.strptime(data['check_in'], '%Y-%m-%d').date()
+        check_out_date = datetime.strptime(data['check_out'], '%Y-%m-%d').date()
+        nights = (check_out_date - check_in_date).days
+        
+        print(f"🔍 DEBUG - Nights calculation: {check_in_date} to {check_out_date} = {nights} nights")
+        
+        if nights <= 0:
+            return jsonify({'message': 'Check-out date must be after check-in date'}), 400
+        
+        # Calculate total price based on nights
         total_price = 0
         booking_rooms = []
         
@@ -332,8 +345,11 @@ def create_booking():
             if room.status != 'available':
                 return jsonify({'message': f'Room {room.room_number} is not available'}), 400
             
-            price = room.price_with_breakfast if room_data['breakfast_option'] == 'with' else room.price_no_breakfast
-            subtotal = price * room_data['quantity']
+            price_per_night = room.price_with_breakfast if room_data['breakfast_option'] == 'with' else room.price_no_breakfast
+            subtotal = price_per_night * room_data['quantity'] * nights  # PERBAIKAN: tambahkan * nights
+            
+            print(f"🔍 DEBUG - Room {room.room_number}: {price_per_night} x {room_data['quantity']} x {nights} nights = {subtotal}")
+            
             total_price += subtotal
             
             booking_rooms.append({
@@ -341,9 +357,11 @@ def create_booking():
                 'room_type': room.room_type.name,
                 'quantity': room_data['quantity'],
                 'breakfast_option': room_data['breakfast_option'],
-                'price_per_night': price,
+                'price_per_night': price_per_night,
                 'subtotal': subtotal
             })
+        
+        print(f"🔍 DEBUG - Final total price: {total_price}")
         
         # Create booking
         booking = Booking(
@@ -351,8 +369,8 @@ def create_booking():
             nik=data['nik'],
             guest_name=data['guest_name'],
             phone=data['phone'],
-            check_in=datetime.strptime(data['check_in'], '%Y-%m-%d').date(),
-            check_out=datetime.strptime(data['check_out'], '%Y-%m-%d').date(),
+            check_in=check_in_date,
+            check_out=check_out_date,
             total_guests=data['total_guests'],
             payment_method=data['payment_method'],
             total_price=total_price
@@ -378,11 +396,14 @@ def create_booking():
         
         return jsonify({
             'message': 'Booking created successfully',
-            'booking_id': booking.id
+            'booking_id': booking.id,
+            'total_price': total_price,
+            'nights': nights
         }), 201
         
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Booking error: {str(e)}")
         return jsonify({'message': str(e)}), 400
 
 @app.route('/api/bookings/me', methods=['GET'])
@@ -391,7 +412,13 @@ def get_my_bookings():
     try:
         current_user_id = get_jwt_identity()
         
+        # DEBUG: Print user ID
+        print(f"🔍 DEBUG - Current user ID: {current_user_id}")
+        
         bookings = Booking.query.filter_by(user_id=current_user_id).order_by(Booking.created_at.desc()).all()
+        
+        # DEBUG: Print database results
+        print(f"🔍 DEBUG - Found {len(bookings)} bookings in database")
         
         result = []
         for booking in bookings:
@@ -404,11 +431,14 @@ def get_my_bookings():
                 'check_out': booking.check_out.isoformat(),
                 'total_guests': booking.total_guests,
                 'payment_method': booking.payment_method,
-                'total_price': booking.total_price,
+                'total_price': float(booking.total_price),  # Pastikan float
                 'status': booking.status,
                 'created_at': booking.created_at.isoformat(),
                 'booking_rooms': []
             }
+            
+            # DEBUG: Print each booking
+            print(f"🔍 DEBUG - Booking: {booking.id}, Status: {booking.status}")
             
             for br in booking.booking_rooms:
                 booking_data['booking_rooms'].append({
@@ -416,15 +446,30 @@ def get_my_bookings():
                     'room_type': br.room_type,
                     'quantity': br.quantity,
                     'breakfast_option': br.breakfast_option,
-                    'subtotal': br.subtotal
+                    'subtotal': float(br.subtotal)  # Pastikan float
                 })
             
             result.append(booking_data)
         
-        return jsonify({'data': result}), 200
+        # DEBUG: Print final response structure
+        print("🔍 DEBUG - Final response structure:")
+        print(f"Response: {{'data': {result}}}")
+        print(f"Response type: {{'data': array with {len(result)} items}}")
+        
+        # PASTIKAN: Kembalikan dengan struktur yang konsisten
+        return jsonify({
+            'success': True,
+            'data': result,
+            'count': len(result)
+        }), 200
         
     except Exception as e:
-        return jsonify({'message': str(e)}), 500
+        print(f"❌ ERROR in get_my_bookings: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e),
+            'data': []
+        }), 500
 
 # ==== ADMIN ROUTES ====
 # Allowed extensions for images

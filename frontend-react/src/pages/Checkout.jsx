@@ -38,61 +38,48 @@ export const Checkout = () => {
   const totalPrice = nights * (pricePerNight || 0)
 
   const onSubmit = async (data) => {
-    if (!room) {
-      setError('Room information is missing')
-      return
-    }
-
-    setLoading(true)
-    setError('')
-
-    try {
-      const bookingData = {
-        ...data,
-        total_price: totalPrice,
-        rooms: [
-          {
-            room_id: room.id,
-            quantity: 1,
-            breakfast_option: data.breakfast_option
-          }
-        ]
-      }
-
-      const response = await bookingsAPI.createBooking(bookingData)
-      
-      if (response.data) {
-        navigate('/my-bookings', { 
-          state: { message: 'Booking successful!' } 
-        })
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Booking failed. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   if (!room) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
-            Room selection required
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Please select a room before proceeding to checkout.
-          </p>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-lg transition-colors duration-300"
-          >
-            Browse Rooms
-          </button>
-        </div>
-      </div>
-    )
+    setError('Room information is missing')
+    return
   }
+
+  setLoading(true)
+  setError('')
+
+  try {
+    // HAPUS total_price - biarkan backend yang menghitung berdasarkan nights
+    const bookingData = {
+      nik: data.nik,
+      guest_name: data.guest_name,
+      phone: data.phone,
+      check_in: data.check_in,
+      check_out: data.check_out,
+      total_guests: parseInt(data.total_guests),
+      payment_method: data.payment_method,
+      rooms: [
+        {
+          room_id: room.id,
+          quantity: 1,
+          breakfast_option: data.breakfast_option
+        }
+      ]
+    }
+
+    console.log('📤 Sending booking data:', bookingData)
+
+    const response = await bookingsAPI.createBooking(bookingData)
+    
+    if (response.data) {
+      navigate('/my-bookings', { 
+        state: { message: 'Booking successful!' } 
+      })
+    }
+  } catch (err) {
+    setError(err.response?.data?.message || 'Booking failed. Please try again.')
+  } finally {
+    setLoading(false)
+  }
+}
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
