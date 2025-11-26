@@ -8,37 +8,78 @@ from app.utils import admin_required
 
 admin_bp = Blueprint('admin', __name__)
 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# ===== ROOM TYPES =====
+@admin_bp.route('/room-types', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_room_types():
+    from app.models import RoomType
+    
+    try:
+        room_types = RoomType.query.all()
+        result = []
+        for rt in room_types:
+            result.append({
+                'id': rt.id,
+                'name': rt.name,
+                'description': rt.description
+            })
+        print(f"✅ Found {len(result)} room types")
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"❌ Error getting room types: {e}")
+        return jsonify({'message': str(e)}), 500
+
+# ===== ROOMS MANAGEMENT =====
 @admin_bp.route('/rooms', methods=['GET'])
 @jwt_required()
 @admin_required
 def get_rooms():
-    from app.models import Room, RoomType  # IMPORT DI DALAM FUNGSI
+    from app.models import Room, RoomType
     
-    rooms = Room.query.all()
-    result = []
-    for room in rooms:
-        result.append({
-            'id': room.id,
-            'room_type_id': room.room_type_id,
-            'room_number': room.room_number,
-            'capacity': room.capacity,
-            'price_no_breakfast': room.price_no_breakfast,
-            'price_with_breakfast': room.price_with_breakfast,
-            'status': room.status,
-            'description': room.description,
-            'room_type': {
-                'id': room.room_type.id,
-                'name': room.room_type.name,
-                'description': room.room_type.description
-            } if room.room_type else None
-        })
-    return jsonify(result), 200
+    try:
+        rooms = Room.query.all()
+        result = []
+        for room in rooms:
+            # Get photos if any
+            photos = []
+            for photo in room.photos:
+                photos.append({
+                    'id': photo.id,
+                    'photo_path': f"/uploads/rooms/{room.id}/{photo.photo_path}",
+                    'is_primary': getattr(photo, 'is_primary', False)
+                })
+            
+            result.append({
+                'id': room.id,
+                'room_type_id': room.room_type_id,
+                'room_number': room.room_number,
+                'capacity': room.capacity,
+                'price_no_breakfast': room.price_no_breakfast,
+                'price_with_breakfast': room.price_with_breakfast,
+                'status': room.status,
+                'description': room.description,
+                'photos': photos,
+                'room_type': {
+                    'id': room.room_type.id,
+                    'name': room.room_type.name,
+                    'description': room.room_type.description
+                } if room.room_type else None
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
 
 @admin_bp.route('/rooms', methods=['POST'])
 @jwt_required()
 @admin_required
 def create_room():
-    from app.models import Room  # IMPORT DI DALAM FUNGSI
+    from app.models import Room
     
     try:
         data = request.get_json()
@@ -62,7 +103,7 @@ def create_room():
             price_no_breakfast=float(data['price_no_breakfast']),
             price_with_breakfast=float(data['price_with_breakfast']),
             description=data.get('description', ''),
-            status='available'
+            status=data.get('status', 'available')
         )
         
         db.session.add(room)
@@ -85,35 +126,12 @@ def create_room():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
-    
-# Tambahkan di admin.py setelah import
-@admin_bp.route('/room-types', methods=['GET'])
-@jwt_required()
-@admin_required
-def get_room_types():
-    from app.models import RoomType
-    
-    try:
-        room_types = RoomType.query.all()
-        result = []
-        for rt in room_types:
-            result.append({
-                'id': rt.id,
-                'name': rt.name,
-                'description': rt.description
-            })
-        print(f"✅ Found {len(result)} room types")  # Debug log
-        return jsonify(result), 200
-    except Exception as e:
-        print(f"❌ Error getting room types: {e}")  # Debug log
-        return jsonify({'message': str(e)}), 500
-        
 
 @admin_bp.route('/rooms/<room_id>', methods=['PUT'])
 @jwt_required()
 @admin_required
 def update_room(room_id):
-    from app.models import Room  # IMPORT DI DALAM FUNGSI
+    from app.models import Room
     
     try:
         room = Room.query.get(room_id)
@@ -168,12 +186,25 @@ def update_room(room_id):
 @jwt_required()
 @admin_required
 def delete_room(room_id):
-    from app.models import Room  # IMPORT DI DALAM FUNGSI
+    from app.models import Room, RoomPhoto
     
     try:
         room = Room.query.get(room_id)
         if not room:
             return jsonify({'message': 'Room not found'}), 404
+        
+        # Delete associated photos
+        for photo in room.photos:
+            # Delete file from filesystem
+            file_path = os.path.join(
+                current_app.config['UPLOAD_FOLDER'],
+                'rooms',
+                room.id,
+                photo.photo_path
+            )
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            db.session.delete(photo)
         
         db.session.delete(room)
         db.session.commit()
@@ -184,175 +215,163 @@ def delete_room(room_id):
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# Room Management
-@admin_bp.route('/rooms', methods=['GET'])
+# ===== ROOM PHOTOS =====
+@admin_bp.route('/rooms/<room_id>/photos', methods=['POST'])
 @jwt_required()
 @admin_required
-def get_rooms():
-    rooms = Room.query.all()
-    return jsonify([room_schema.dump(room) for room in rooms]), 200
-
-@admin_bp.route('/rooms', methods=['POST'])
-@jwt_required()
-@admin_required
-def create_room():
-    try:
-        data = request.get_json()
-        room_data = room_schema.load(data)
-        
-        room = Room(**room_data)
-        db.session.add(room)
-        db.session.commit()
-        
-        return jsonify(room_schema.dump(room)), 201
-    except Exception as e:
-        return jsonify({'message': str(e)}), 400
-
-@admin_bp.route('/rooms/<room_id>', methods=['GET'])
-@jwt_required()
-@admin_required
-def get_room(room_id):
-    room = Room.query.get(room_id)
-    if not room:
-        return jsonify({'message': 'Room not found'}), 404
-    return jsonify(room_schema.dump(room)), 200
-
-@admin_bp.route('/rooms/<room_id>', methods=['PUT'])
-@jwt_required()
-@admin_required
-def update_room(room_id):
+def upload_room_photos(room_id):
+    from app.models import Room, RoomPhoto
+    
     try:
         room = Room.query.get(room_id)
         if not room:
             return jsonify({'message': 'Room not found'}), 404
         
-        data = request.get_json()
-        room_data = room_schema.load(data, partial=True)
+        if 'photos' not in request.files:
+            return jsonify({'message': 'No photos provided'}), 400
         
-        for key, value in room_data.items():
-            setattr(room, key, value)
+        files = request.files.getlist('photos')
+        if not files or not files[0].filename:
+            return jsonify({'message': 'No photos selected'}), 400
+        
+        uploaded_photos = []
+        
+        for i, file in enumerate(files):
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4()}_{filename}"
+                
+                upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'rooms', room_id)
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                file_path = os.path.join(upload_dir, unique_filename)
+                file.save(file_path)
+                
+                # Create photo record
+                photo = RoomPhoto(
+                    room_id=room_id, 
+                    photo_path=unique_filename,
+                    is_primary=(i == 0)  # First photo as primary
+                )
+                db.session.add(photo)
+                uploaded_photos.append(photo)
         
         db.session.commit()
-        return jsonify(room_schema.dump(room)), 200
+        
+        return jsonify([{
+            'id': photo.id,
+            'photo_url': f"/uploads/rooms/{room_id}/{photo.photo_path}",
+            'is_primary': photo.is_primary
+        } for photo in uploaded_photos]), 201
+        
     except Exception as e:
+        db.session.rollback()
         return jsonify({'message': str(e)}), 400
-
-@admin_bp.route('/rooms/<room_id>', methods=['DELETE'])
-@jwt_required()
-@admin_required
-def delete_room(room_id):
-    room = Room.query.get(room_id)
-    if not room:
-        return jsonify({'message': 'Room not found'}), 404
-    
-    db.session.delete(room)
-    db.session.commit()
-    return jsonify({'message': 'Room deleted successfully'}), 200
-
-# Room Photos
-@admin_bp.route('/rooms/<room_id>/photos', methods=['POST'])
-@jwt_required()
-@admin_required
-def upload_room_photos(room_id):
-    room = Room.query.get(room_id)
-    if not room:
-        return jsonify({'message': 'Room not found'}), 404
-    
-    if 'photos' not in request.files:
-        return jsonify({'message': 'No photos provided'}), 400
-    
-    files = request.files.getlist('photos')
-    uploaded_photos = []
-    
-    for file in files:
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            unique_filename = f"{uuid.uuid4()}_{filename}"
-            
-            upload_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'rooms', room_id)
-            os.makedirs(upload_dir, exist_ok=True)
-            
-            file_path = os.path.join(upload_dir, unique_filename)
-            file.save(file_path)
-            
-            photo = RoomPhoto(room_id=room_id, photo_path=unique_filename)
-            db.session.add(photo)
-            uploaded_photos.append(photo)
-    
-    db.session.commit()
-    return jsonify([{
-        'id': photo.id,
-        'photo_url': f"/uploads/rooms/{room_id}/{photo.photo_path}"
-    } for photo in uploaded_photos]), 201
 
 @admin_bp.route('/room-photos/<photo_id>', methods=['DELETE'])
 @jwt_required()
 @admin_required
 def delete_room_photo(photo_id):
-    photo = RoomPhoto.query.get(photo_id)
-    if not photo:
-        return jsonify({'message': 'Photo not found'}), 404
+    from app.models import RoomPhoto
     
-    # Delete file from filesystem
-    file_path = os.path.join(
-        current_app.config['UPLOAD_FOLDER'],
-        'rooms',
-        photo.room_id,
-        photo.photo_path
-    )
-    
-    if os.path.exists(file_path):
-        os.remove(file_path)
-    
-    db.session.delete(photo)
-    db.session.commit()
-    return jsonify({'message': 'Photo deleted successfully'}), 200
+    try:
+        photo = RoomPhoto.query.get(photo_id)
+        if not photo:
+            return jsonify({'message': 'Photo not found'}), 404
+        
+        # Delete file from filesystem
+        file_path = os.path.join(
+            current_app.config['UPLOAD_FOLDER'],
+            'rooms',
+            photo.room_id,
+            photo.photo_path
+        )
+        
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        
+        db.session.delete(photo)
+        db.session.commit()
+        
+        return jsonify({'message': 'Photo deleted successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
 
-# Bookings Management
+# ===== BOOKINGS MANAGEMENT =====
 @admin_bp.route('/bookings', methods=['GET'])
 @jwt_required()
 @admin_required
 def get_bookings():
-    bookings = Booking.query.all()
-    return jsonify([booking_schema.dump(booking) for booking in bookings]), 200
-
-@admin_bp.route('/bookings/<booking_id>', methods=['GET'])
-@jwt_required()
-@admin_required
-def get_booking(booking_id):
-    booking = Booking.query.get(booking_id)
-    if not booking:
-        return jsonify({'message': 'Booking not found'}), 404
-    return jsonify(booking_schema.dump(booking)), 200
+    from app.models import Booking
+    
+    try:
+        bookings = Booking.query.all()
+        result = []
+        for booking in bookings:
+            result.append({
+                'id': booking.id,
+                'guest_name': booking.guest_name,
+                'check_in': booking.check_in.isoformat() if booking.check_in else None,
+                'check_out': booking.check_out.isoformat() if booking.check_out else None,
+                'status': booking.status,
+                'total_price': booking.total_price
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
 
 @admin_bp.route('/bookings/<booking_id>/status', methods=['PUT'])
 @jwt_required()
 @admin_required
 def update_booking_status(booking_id):
-    booking = Booking.query.get(booking_id)
-    if not booking:
-        return jsonify({'message': 'Booking not found'}), 404
+    from app.models import Booking
     
-    data = request.get_json()
-    new_status = data.get('status')
-    
-    if new_status not in ['pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled']:
-        return jsonify({'message': 'Invalid status'}), 400
-    
-    booking.status = new_status
-    db.session.commit()
-    
-    return jsonify(booking_schema.dump(booking)), 200
+    try:
+        booking = Booking.query.get(booking_id)
+        if not booking:
+            return jsonify({'message': 'Booking not found'}), 404
+        
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if new_status not in ['pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled']:
+            return jsonify({'message': 'Invalid status'}), 400
+        
+        booking.status = new_status
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Booking status updated successfully',
+            'booking': {
+                'id': booking.id,
+                'status': booking.status
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
 
-# Ratings Management
+# ===== RATINGS MANAGEMENT =====
 @admin_bp.route('/ratings', methods=['GET'])
 @jwt_required()
 @admin_required
 def get_ratings():
-    ratings = Rating.query.all()
-    return jsonify([rating_schema.dump(rating) for rating in ratings]), 200
+    from app.models import Rating
+    
+    try:
+        ratings = Rating.query.all()
+        result = []
+        for rating in ratings:
+            result.append({
+                'id': rating.id,
+                'star': rating.star,
+                'comment': rating.comment,
+                'user_name': rating.user.name if rating.user else 'Unknown',
+                'created_at': rating.created_at.isoformat() if rating.created_at else None
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
