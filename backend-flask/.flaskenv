@@ -1,0 +1,5 @@
+FLASK_APP=run.py
+FLASK_ENV=development
+SECRET_KEY=38c0db3a0b8113550da855f07f97749a3922e003c40a9d6882fd8cd82c61d279
+JWT_SECRET_KEY=7e8a32f4c215846c2ddc6aac9ffa787948f36380c5a6306d958a65200e307d77
+DATABASE_URL=mysql+pymysql://root:password@localhost/hotel_db
