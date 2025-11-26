@@ -50,7 +50,7 @@ export const Checkout = () => {
       const bookingData = {
         ...data,
         total_price: totalPrice,
-        booking_rooms: [
+        rooms: [
           {
             room_id: room.id,
             quantity: 1,
