@@ -37,8 +37,26 @@ apiClient.interceptors.response.use(
 );
 
 export const roomsAPI = {
-  // ✅ TAMBAHKAN FUNGSI getRooms YANG HILANG
-  getRooms: (filters = {}) => apiClient.get('/rooms', { params: filters }),
+  // ✅ PERBAIKAN: Handle filters dengan benar
+  getRooms: (filters = {}) => {
+    console.log('🔍 FILTERS SENT TO API:', filters);
+    
+    const params = {};
+    
+    if (filters.room_type) params.room_type = filters.room_type;
+    if (filters.min_price) params.min_price = filters.min_price;
+    if (filters.max_price) params.max_price = filters.max_price;
+    if (filters.capacity) params.capacity = filters.capacity;
+    
+    // Handle facilities array - PERBAIKAN: gunakan facilities[] untuk array
+    if (filters.facilities && filters.facilities.length > 0) {
+      params['facilities[]'] = filters.facilities;
+    }
+    
+    console.log('🔍 FINAL API PARAMS:', params);
+    
+    return apiClient.get('/rooms', { params });
+  },
   
   // Untuk public rooms (tanpa auth) - GET SINGLE ROOM
   getRoom: (id) => apiClient.get(`/rooms/${id}`),

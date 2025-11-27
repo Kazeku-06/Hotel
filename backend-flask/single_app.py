@@ -421,10 +421,58 @@ def room_facilities(room_id):
         return jsonify({'message': str(e)}), 400
 
 # ==== ROOM ROUTES ====
+# ==== ROOM ROUTES ====
 @app.route('/api/rooms', methods=['GET'])
 def get_rooms():
     try:
-        rooms = Room.query.all()
+        # Get filter parameters from request
+        room_type_filter = request.args.get('room_type', '').lower()
+        min_price = request.args.get('min_price', type=float)
+        max_price = request.args.get('max_price', type=float)
+        capacity_filter = request.args.get('capacity', type=int)
+        
+        # PERBAIKAN: Handle facilities array dengan benar
+        facilities_filter = request.args.getlist('facilities[]')
+        # Fallback untuk format lain
+        if not facilities_filter:
+            facilities_filter = request.args.getlist('facilities')
+        
+        print(f"🔍 DEBUG FILTER - room_type: {room_type_filter}, min_price: {min_price}, max_price: {max_price}, capacity: {capacity_filter}")
+        print(f"🔍 DEBUG FACILITIES FILTER: {facilities_filter}")
+        print(f"🔍 DEBUG ALL ARGS: {request.args}")
+        
+        # Start with base query
+        query = Room.query.filter(Room.status == 'available')
+        
+        # Filter by room type - PERBAIKAN: case insensitive exact match
+        if room_type_filter:
+            query = query.join(RoomType).filter(db.func.lower(RoomType.name) == room_type_filter)
+        
+        # Filter by price range
+        if min_price is not None:
+            query = query.filter(Room.price_no_breakfast >= min_price)
+        if max_price is not None:
+            query = query.filter(Room.price_no_breakfast <= max_price)
+        
+        # Filter by capacity
+        if capacity_filter:
+            query = query.filter(Room.capacity >= capacity_filter)
+        
+        # Filter by facilities - PERBAIKAN: gunakan subquery untuk multiple facilities
+        if facilities_filter:
+            # Cari room yang memiliki SEMUA facilities yang dipilih
+            subquery = db.session.query(FacilityRoom.room_id).filter(
+                FacilityRoom.facility_id.in_(facilities_filter)
+            ).group_by(FacilityRoom.room_id).having(
+                db.func.count(FacilityRoom.facility_id) == len(facilities_filter)
+            ).subquery()
+            
+            query = query.join(subquery, Room.id == subquery.c.room_id)
+        
+        rooms = query.all()
+        
+        print(f"🔍 DEBUG - Found {len(rooms)} rooms after filtering")
+        
         result = []
         for room in rooms:
             # Get primary photo if exists
@@ -451,7 +499,7 @@ def get_rooms():
                 'capacity': room.capacity,
                 'price_no_breakfast': room.price_no_breakfast,
                 'price_with_breakfast': room.price_with_breakfast,
-                'status': room.status,  # UPDATE: Include status in response
+                'status': room.status,
                 'description': room.description,
                 'primary_photo': primary_photo,
                 'facility_rooms': facilities,
@@ -462,6 +510,9 @@ def get_rooms():
             })
         return jsonify(result), 200
     except Exception as e:
+        print(f"❌ ERROR in get_rooms: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'message': str(e)}), 500
 
 # ==== Single Room Detail ====
