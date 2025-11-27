@@ -18,10 +18,19 @@ export const RoomDetail = () => {
     retry: 1
   })
 
-  // Debug lebih detail
+  // PERBAIKAN: Ambil data room yang benar
+  const roomData = room?.data || room
+
+  // PERBAIKAN: Handle photos dengan benar
+  const photos = roomData?.photos || []
+  const currentPhoto = photos[selectedPhotoIndex]
+
   console.log('🔍 RoomDetail Debug:')
   console.log('Room ID:', id)
   console.log('Full response:', room)
+  console.log('Photos:', photos)
+  console.log('Current Photo Index:', selectedPhotoIndex)
+  console.log('Current Photo:', currentPhoto)
   console.log('Error:', error)
   console.log('Loading:', isLoading)
 
@@ -67,9 +76,6 @@ export const RoomDetail = () => {
     )
   }
 
-  // PERBAIKAN: Akses data langsung, bukan room.data
-  const roomData = room?.data || room
-
   if (!roomData) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -96,9 +102,6 @@ export const RoomDetail = () => {
   // PERBAIKAN: Handle fasilitas dari data real
   const facilities = roomData.facilities || roomData.facility_rooms || []
   console.log('🏨 Room facilities:', facilities)
-
-  const primaryPhoto = roomData.photos?.find(p => p.is_primary) || roomData.photos?.[0]
-  const photoUrl = primaryPhoto ? `http://localhost:5000${primaryPhoto.photo_path}` : null
 
   // Fungsi untuk render icon berdasarkan nama fasilitas
   const getFacilityIcon = (facilityName, icon) => {
@@ -160,42 +163,101 @@ export const RoomDetail = () => {
 
         {/* Room Details */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-          {/* Image Gallery */}
-          <div className="relative h-96 overflow-hidden">
-            {photoUrl ? (
+          {/* 🔥 PERBAIKAN: Image Gallery yang benar */}
+          <div className="relative h-96 overflow-hidden bg-gray-200 dark:bg-gray-700">
+            {/* Main Image */}
+            {currentPhoto ? (
               <img
-                src={photoUrl}
-                alt={`Room ${roomData.room_number}`}
-                className="w-full h-full object-cover"
+                key={currentPhoto.id} // 🔥 Important: key untuk force re-render
+                src={`http://localhost:5000${currentPhoto.photo_path}`}
+                alt={`Room ${roomData.room_number} - View ${selectedPhotoIndex + 1}`}
+                className="w-full h-full object-cover transition-opacity duration-300"
                 onError={(e) => {
+                  console.error('❌ Error loading image:', currentPhoto.photo_path)
                   e.target.style.display = 'none'
-                  // Fallback akan ditampilkan oleh element setelahnya
                 }}
               />
-            ) : null}
-            <div className={`absolute inset-0 flex items-center justify-center bg-gray-200 dark:bg-gray-700 ${photoUrl ? 'hidden' : ''}`}>
-              <span className="text-6xl text-gray-400">🏨</span>
-            </div>
-            
-            {/* Photo Thumbnails */}
-            {roomData.photos && roomData.photos.length > 1 && (
-              <div className="absolute bottom-4 left-4 right-4 flex space-x-2 overflow-x-auto">
-                {roomData.photos.map((photo, index) => (
-                  <button
-                    key={photo.id}
-                    onClick={() => setSelectedPhotoIndex(index)}
-                    className={`w-16 h-16 rounded border-2 ${
-                      selectedPhotoIndex === index ? 'border-gold-500' : 'border-white'
-                    }`}
-                  >
-                    <img
-                      src={`http://localhost:5000${photo.photo_path}`}
-                      alt={`View ${index + 1}`}
-                      className="w-full h-full object-cover rounded"
-                    />
-                  </button>
-                ))}
+            ) : photos.length > 0 ? (
+              // Fallback jika currentPhoto tidak ada tapi ada photos
+              <img
+                src={`http://localhost:5000${photos[0].photo_path}`}
+                alt={`Room ${roomData.room_number}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              // Default placeholder jika tidak ada foto
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="text-center">
+                  <span className="text-6xl text-gray-400 mb-2 block">🏨</span>
+                  <p className="text-gray-500 dark:text-gray-400">No image available</p>
+                </div>
               </div>
+            )}
+            
+            {/* 🔥 PERBAIKAN: Photo Thumbnails - hanya tampilkan jika ada lebih dari 1 foto */}
+            {photos.length > 1 && (
+              <div className="absolute bottom-4 left-4 right-4">
+                <div className="flex space-x-2 overflow-x-auto pb-2">
+                  {photos.map((photo, index) => (
+                    <button
+                      key={photo.id}
+                      onClick={() => {
+                        console.log('🖼️ Changing photo to index:', index)
+                        setSelectedPhotoIndex(index)
+                      }}
+                      className={`flex-shrink-0 w-16 h-16 rounded border-2 transition-all duration-200 ${
+                        selectedPhotoIndex === index 
+                          ? 'border-gold-500 ring-2 ring-gold-200 scale-105' 
+                          : 'border-white hover:border-gray-300'
+                      }`}
+                    >
+                      <img
+                        src={`http://localhost:5000${photo.photo_path}`}
+                        alt={`Thumbnail ${index + 1}`}
+                        className="w-full h-full object-cover rounded"
+                        onError={(e) => {
+                          e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0zMiAzNkMzNC4yMDkxIDM2IDM2IDM0LjIwOTEgMzYgMzJDMzYgMjkuNzkwOSAzNC4yMDkxIDI4IDMyIDI4QzI5Ljc5MDkgMjggMjggMjkuNzkwOSAyOCAzMkMyOCAzNC4yMDkxIDI5Ljc5MDkgMzYgMzIgMzZaIiBmaWxsPSIjOEE5MEFBIi8+CjxwYXRoIGQ9Ik0zMiAxNkMzNi40MTggMTYgNDAgMTkuNTgyIDQwIDI0VjQwQzQwIDQ0LjQxOCAzNi40MTggNDggMzIgNDhDMTcuNjA0IDQ4IDggNDggOCA0OFYyNEM4IDE5LjU4MiAxMS41ODIgMTYgMTYgMTZIMzJaIiBmaWxsPSIjOEE5MEFBIi8+Cjwvc3ZnPgo='
+                        }}
+                      />
+                    </button>
+                  ))}
+                </div>
+                
+                {/* 🔥 PERBAIKAN: Photo Counter */}
+                <div className="text-center">
+                  <span className="inline-block bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+                    {selectedPhotoIndex + 1} / {photos.length}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* 🔥 PERBAIKAN: Navigation Arrows untuk banyak foto */}
+            {photos.length > 1 && (
+              <>
+                <button
+                  onClick={() => {
+                    const newIndex = selectedPhotoIndex > 0 ? selectedPhotoIndex - 1 : photos.length - 1
+                    setSelectedPhotoIndex(newIndex)
+                  }}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-2 rounded-full transition-all duration-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    const newIndex = selectedPhotoIndex < photos.length - 1 ? selectedPhotoIndex + 1 : 0
+                    setSelectedPhotoIndex(newIndex)
+                  }}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 hover:bg-opacity-70 text-white p-2 rounded-full transition-all duration-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </>
             )}
           </div>
 
