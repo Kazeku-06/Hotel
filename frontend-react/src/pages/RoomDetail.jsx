@@ -93,8 +93,57 @@ export const RoomDetail = () => {
 
   console.log('✅ Room data loaded:', roomData)
 
+  // PERBAIKAN: Handle fasilitas dari data real
+  const facilities = roomData.facilities || roomData.facility_rooms || []
+  console.log('🏨 Room facilities:', facilities)
+
   const primaryPhoto = roomData.photos?.find(p => p.is_primary) || roomData.photos?.[0]
   const photoUrl = primaryPhoto ? `http://localhost:5000${primaryPhoto.photo_path}` : null
+
+  // Fungsi untuk render icon berdasarkan nama fasilitas
+  const getFacilityIcon = (facilityName, icon) => {
+    if (icon) return icon
+    
+    const iconMap = {
+      'wifi': '📶',
+      'wi-fi': '📶',
+      'ac': '❄️',
+      'air conditioning': '❄️',
+      'tv': '📺',
+      'television': '📺',
+      'breakfast': '🍳',
+      'swimming pool': '🏊',
+      'pool': '🏊',
+      'parking': '🅿️',
+      'gym': '💪',
+      'fitness': '💪',
+      'spa': '💆',
+      'mini bar': '🍷',
+      'minibar': '🍷',
+      'safe': '🔒',
+      'safe box': '🔒',
+      'hair dryer': '💨',
+      'hairdryer': '💨',
+      'coffee': '☕',
+      'coffee maker': '☕',
+      'bathroom': '🚿',
+      'desk': '💻',
+      'balcony': '🌅',
+      'view': '🌅',
+      'jacuzzi': '🛁',
+      'bathtub': '🛁',
+      'shower': '🚿'
+    }
+    
+    const lowerName = facilityName.toLowerCase()
+    for (const [key, value] of Object.entries(iconMap)) {
+      if (lowerName.includes(key)) {
+        return value
+      }
+    }
+    
+    return '✅' // Default icon
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -186,22 +235,79 @@ export const RoomDetail = () => {
                   </div>
                 </div>
 
-                {/* Facilities */}
+                {/* Facilities - REAL DATA */}
                 <div className="mb-6">
                   <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
                     Room Facilities
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {[
-                      'Free WiFi', 'Air Conditioning', 'Smart TV', 
-                      'Mini Bar', 'Safe Box', 'Hair Dryer',
-                      'Coffee Maker', 'Private Bathroom', 'Desk'
-                    ].map((facility, index) => (
-                      <div key={index} className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
-                        <span className="text-green-500">✓</span>
-                        <span>{facility}</span>
-                      </div>
-                    ))}
+                  
+                  {facilities.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {facilities.map((facility, index) => {
+                        // Handle both facility object structures
+                        const facilityName = facility.name || facility.facility?.name
+                        const facilityIcon = facility.icon || facility.facility?.icon
+                        
+                        if (!facilityName) return null
+                        
+                        return (
+                          <div 
+                            key={facility.id || facility.facility_id || index} 
+                            className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                          >
+                            <span className="text-xl">
+                              {getFacilityIcon(facilityName, facilityIcon)}
+                            </span>
+                            <span className="text-gray-700 dark:text-gray-300 font-medium">
+                              {facilityName}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <span className="text-4xl mb-2 block">🏨</span>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        No facilities information available
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                        Contact us for more details about room amenities
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Additional Room Details */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+                    Room Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-600 dark:text-gray-300">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gold-500">•</span>
+                      <span>Room Number: {roomData.room_number}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gold-500">•</span>
+                      <span>Room Type: {roomData.room_type?.name}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gold-500">•</span>
+                      <span>Max Capacity: {roomData.capacity} {roomData.capacity === 1 ? 'person' : 'people'}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gold-500">•</span>
+                      <span>Status: 
+                        <span className={`ml-1 ${
+                          roomData.status === 'available' 
+                            ? 'text-green-600 dark:text-green-400' 
+                            : 'text-red-600 dark:text-red-400'
+                        }`}>
+                          {roomData.status}
+                        </span>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -232,6 +338,37 @@ export const RoomDetail = () => {
                     </span>
                   </div>
                 </div>
+
+                {/* Facilities Summary */}
+                {facilities.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="font-semibold text-gray-800 dark:text-white mb-3">
+                      Included Facilities
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {facilities.slice(0, 6).map((facility, index) => {
+                        const facilityName = facility.name || facility.facility?.name
+                        const facilityIcon = facility.icon || facility.facility?.icon
+                        
+                        return (
+                          <span 
+                            key={facility.id || facility.facility_id || index}
+                            className="inline-flex items-center space-x-1 bg-white dark:bg-gray-600 px-2 py-1 rounded text-sm"
+                            title={facilityName}
+                          >
+                            <span>{getFacilityIcon(facilityName, facilityIcon)}</span>
+                            <span className="hidden sm:inline">{facilityName}</span>
+                          </span>
+                        )
+                      })}
+                      {facilities.length > 6 && (
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">
+                          +{facilities.length - 6} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {roomData.status === 'available' ? (
                   isAuthenticated ? (

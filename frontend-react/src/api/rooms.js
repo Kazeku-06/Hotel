@@ -38,7 +38,7 @@ apiClient.interceptors.response.use(
 
 export const roomsAPI = {
   // Untuk public rooms (tanpa auth) - GET SINGLE ROOM
-  getRoom: (id) => apiClient.get(`/rooms/${id}`), // ✅ TAMBAHKAN INI
+  getRoom: (id) => apiClient.get(`/rooms/${id}`),
   
   // Untuk public rooms (tanpa auth) - GET ALL ROOMS
   getRooms: () => apiClient.get('/rooms'),
@@ -65,5 +65,26 @@ export const roomsAPI = {
   deleteRoom: (id) => apiClient.delete(`/admin/rooms/${id}`),
 
   deleteRoomPhoto: (roomId, photoId) => 
-    apiClient.delete(`/admin/rooms/${roomId}/photos/${photoId}`)
+    apiClient.delete(`/admin/rooms/${roomId}/photos/${photoId}`),
+
+  // Facilities API
+  getFacilities: () => apiClient.get('/facilities'),
+  
+  getAdminFacilities: () => apiClient.get('/admin/facilities'),
+  
+  createFacility: (data) => apiClient.post('/admin/facilities', data),
+  
+  getRoomFacilities: (roomId) => apiClient.get(`/admin/rooms/${roomId}/facilities`),
+  
+  addRoomFacility: (roomId, facilityId) => 
+    apiClient.post(`/admin/rooms/${roomId}/facilities`, { facility_id: facilityId }),
+  
+  removeRoomFacility: (roomId, facilityId) => 
+    apiClient.delete(`/admin/rooms/${roomId}/facilities?facility_id=${facilityId}`)
+};
+
+export const facilitiesAPI = {
+  getFacilities: () => apiClient.get('/facilities'),
+  getAdminFacilities: () => apiClient.get('/admin/facilities'),
+  createFacility: (data) => apiClient.post('/admin/facilities', data),
 };

@@ -1,12 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { roomsAPI } from '../../api/rooms'
+import { roomsAPI, facilitiesAPI } from '../../api/rooms'
 import { formatCurrency } from '../../utils/formatCurrency'
 import { useState, useMemo } from 'react'
 
 export const AdminRooms = () => {
   const [showModal, setShowModal] = useState(false)
+  const [showFacilityModal, setShowFacilityModal] = useState(false)
   const [editingRoom, setEditingRoom] = useState(null)
   const [selectedFiles, setSelectedFiles] = useState([])
+  const [selectedFacilities, setSelectedFacilities] = useState([])
+  const [newFacility, setNewFacility] = useState({ name: '', icon: '' })
   const [formData, setFormData] = useState({
     room_number: '',
     room_type_id: '',
@@ -24,6 +27,19 @@ export const AdminRooms = () => {
     queryKey: ['admin-rooms'],
     queryFn: () => roomsAPI.getAdminRooms(),
     retry: 1
+  })
+
+  // Query untuk facilities
+  const { data: facilities } = useQuery({
+    queryKey: ['facilities'],
+    queryFn: () => facilitiesAPI.getFacilities(),
+  })
+
+  // Query untuk room facilities (jika editing)
+  const { data: roomFacilities } = useQuery({
+    queryKey: ['room-facilities', editingRoom?.id],
+    queryFn: () => editingRoom ? roomsAPI.getRoomFacilities(editingRoom.id) : null,
+    enabled: !!editingRoom
   })
 
   // Extract room types dari rooms data
@@ -95,6 +111,42 @@ export const AdminRooms = () => {
     }
   })
 
+  // Mutation untuk add facility
+  const addFacilityMutation = useMutation({
+    mutationFn: ({ roomId, facilityId }) => roomsAPI.addRoomFacility(roomId, facilityId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['room-facilities'])
+      queryClient.invalidateQueries(['admin-rooms'])
+    },
+    onError: (error) => {
+      alert(error.response?.data?.message || 'Failed to add facility')
+    }
+  })
+
+  // Mutation untuk remove facility
+  const removeFacilityMutation = useMutation({
+    mutationFn: ({ roomId, facilityId }) => roomsAPI.removeRoomFacility(roomId, facilityId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['room-facilities'])
+      queryClient.invalidateQueries(['admin-rooms'])
+    },
+    onError: (error) => {
+      alert(error.response?.data?.message || 'Failed to remove facility')
+    }
+  })
+
+  // Mutation untuk create new facility
+  const createFacilityMutation = useMutation({
+    mutationFn: (data) => facilitiesAPI.createFacility(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['facilities'])
+      setNewFacility({ name: '', icon: '' })
+    },
+    onError: (error) => {
+      alert(error.response?.data?.message || 'Failed to create facility')
+    }
+  })
+
   const getStatusColor = (status) => {
     return status === 'available' 
       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -112,6 +164,7 @@ export const AdminRooms = () => {
       status: 'available'
     })
     setSelectedFiles([])
+    setSelectedFacilities([])
     setEditingRoom(null)
   }
 
@@ -152,6 +205,24 @@ export const AdminRooms = () => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index))
   }
 
+  const handleAddFacility = (facilityId) => {
+    if (editingRoom && facilityId) {
+      addFacilityMutation.mutate({ roomId: editingRoom.id, facilityId })
+    }
+  }
+
+  const handleRemoveFacility = (facilityId) => {
+    if (editingRoom && facilityId) {
+      removeFacilityMutation.mutate({ roomId: editingRoom.id, facilityId })
+    }
+  }
+
+  const handleCreateFacility = () => {
+    if (newFacility.name.trim()) {
+      createFacilityMutation.mutate(newFacility)
+    }
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     
@@ -181,6 +252,31 @@ export const AdminRooms = () => {
       ...formData,
       [e.target.name]: e.target.value
     })
+  }
+
+  // Render facilities untuk room
+  const renderRoomFacilities = (room) => {
+    if (!room.facility_rooms || room.facility_rooms.length === 0) {
+      return <span className="text-gray-400 text-sm">No facilities</span>
+    }
+    
+    return (
+      <div className="flex flex-wrap gap-1">
+        {room.facility_rooms.slice(0, 3).map((fr) => (
+          <span 
+            key={fr.facility_id}
+            className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+          >
+            {fr.facility?.name}
+          </span>
+        ))}
+        {room.facility_rooms.length > 3 && (
+          <span className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">
+            +{room.facility_rooms.length - 3}
+          </span>
+        )}
+      </div>
+    )
   }
 
   // Debug error
@@ -256,6 +352,9 @@ export const AdminRooms = () => {
                       Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Facilities
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Photos
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -302,6 +401,9 @@ export const AdminRooms = () => {
                         <div className="text-sm text-gray-900 dark:text-white">
                           {room.room_type?.name}
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {renderRoomFacilities(room)}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex -space-x-2">
@@ -378,7 +480,7 @@ export const AdminRooms = () => {
         {/* Add/Edit Room Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
@@ -435,6 +537,73 @@ export const AdminRooms = () => {
                       </p>
                     )}
                   </div>
+
+                  {/* Facilities Section */}
+                  {editingRoom && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Room Facilities
+                      </label>
+                      <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-sm font-medium">Manage Facilities</span>
+                          <button
+                            type="button"
+                            onClick={() => setShowFacilityModal(true)}
+                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                          >
+                            Add Facility
+                          </button>
+                        </div>
+                        
+                        {/* Current Facilities */}
+                        <div className="mb-3">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            Current facilities:
+                          </p>
+                          {roomFacilities?.data && roomFacilities.data.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {roomFacilities.data.map((facility) => (
+                                <div key={facility.id} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full flex items-center">
+                                  <span className="text-sm">{facility.name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveFacility(facility.id)}
+                                    className="ml-2 text-red-500 hover:text-red-700"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-gray-500 text-sm">No facilities added</p>
+                          )}
+                        </div>
+
+                        {/* Add New Facility */}
+                        <div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            Available facilities:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {facilities?.data?.filter(facility => 
+                              !roomFacilities?.data?.some(rf => rf.id === facility.id)
+                            ).map((facility) => (
+                              <button
+                                key={facility.id}
+                                type="button"
+                                onClick={() => handleAddFacility(facility.id)}
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded-full text-sm transition-colors duration-300"
+                              >
+                                + {facility.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Photo Upload Section */}
                   <div>
@@ -630,6 +799,86 @@ export const AdminRooms = () => {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Facility Modal */}
+        {showFacilityModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
+                    Add New Facility
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowFacilityModal(false)
+                      setNewFacility({ name: '', icon: '' })
+                    }}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Facility Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={newFacility.name}
+                      onChange={(e) => setNewFacility({...newFacility, name: e.target.value})}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                      placeholder="e.g., WiFi, AC, TV"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Icon (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={newFacility.icon}
+                      onChange={(e) => setNewFacility({...newFacility, icon: e.target.value})}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                      placeholder="e.g., 📶, ❄️, 📺"
+                    />
+                  </div>
+
+                  <div className="flex space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowFacilityModal(false)
+                        setNewFacility({ name: '', icon: '' })
+                      }}
+                      className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateFacility}
+                      disabled={!newFacility.name.trim() || createFacilityMutation.isLoading}
+                      className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300"
+                    >
+                      {createFacilityMutation.isLoading ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                          Adding...
+                        </div>
+                      ) : (
+                        'Add Facility'
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
