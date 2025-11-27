@@ -6,17 +6,46 @@ import { RoomCardSkeleton } from '../components/LoadingSkeleton'
 import { roomsAPI } from '../api/rooms'
 
 export const Home = () => {
-  const [filters, setFilters] = useState({})
+  const [filters, setFilters] = useState({
+    room_type: '',
+    min_price: '',
+    max_price: '',
+    capacity: '',
+    facilities: []
+  })
   
-  const { data: rooms, isLoading, error } = useQuery({
+  const [showFilters, setShowFilters] = useState(false)
+  
+  const { data: roomsResponse, isLoading, error } = useQuery({
     queryKey: ['rooms', filters],
     queryFn: () => roomsAPI.getRooms(filters),
     keepPreviousData: true
   })
 
+  // FIX: Handle different response structures
+  const roomsData = Array.isArray(roomsResponse?.data) ? roomsResponse.data : 
+                   Array.isArray(roomsResponse) ? roomsResponse : 
+                   []
+
   const handleFilter = (newFilters) => {
     setFilters(newFilters)
   }
+
+  const clearFilters = () => {
+    setFilters({
+      room_type: '',
+      min_price: '',
+      max_price: '',
+      capacity: '',
+      facilities: []
+    })
+  }
+
+  // Hitung jumlah filter aktif
+  const activeFiltersCount = Object.values(filters).filter(value => {
+    if (Array.isArray(value)) return value.length > 0
+    return value !== ''
+  }).length
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -61,23 +90,114 @@ export const Home = () => {
           </div>
         </div>
 
+        {/* Mobile Filter Toggle */}
+        <div className="lg:hidden mb-6">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-4 flex items-center justify-between shadow-sm"
+          >
+            <span className="font-semibold text-gray-800 dark:text-white">
+              Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+            </span>
+            <span className={`transform transition-transform ${showFilters ? 'rotate-180' : ''}`}>
+              ▼
+            </span>
+          </button>
+        </div>
+
         {/* Filters and Rooms Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
-            <RoomFilter onFilter={handleFilter} />
+          <div className={`lg:col-span-1 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+            <RoomFilter 
+              onFilter={handleFilter} 
+              filters={filters}
+              onClearFilters={clearFilters}
+            />
           </div>
 
           {/* Rooms Grid */}
           <div className="lg:col-span-3">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-                Available Rooms
-              </h2>
-              <span className="text-gray-600 dark:text-gray-400">
-                {rooms?.data?.length || 0} rooms found
-              </span>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                  Available Rooms
+                </h2>
+                {activeFiltersCount > 0 && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {activeFiltersCount} filter(s) applied
+                  </p>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <span className="text-gray-600 dark:text-gray-400 text-sm">
+                  {roomsData.length} rooms found
+                </span>
+                
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={clearFilters}
+                    className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium transition-colors duration-300"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Active Filters Display */}
+            {activeFiltersCount > 0 && (
+              <div className="mb-6 flex flex-wrap gap-2">
+                {filters.room_type && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    Type: {filters.room_type}
+                    <button
+                      onClick={() => handleFilter({ ...filters, room_type: '' })}
+                      className="ml-2 hover:text-blue-600"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                
+                {filters.capacity && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    Capacity: {filters.capacity}+
+                    <button
+                      onClick={() => handleFilter({ ...filters, capacity: '' })}
+                      className="ml-2 hover:text-green-600"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                
+                {(filters.min_price || filters.max_price) && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                    Price: {filters.min_price || '0'} - {filters.max_price || 'Any'}
+                    <button
+                      onClick={() => handleFilter({ ...filters, min_price: '', max_price: '' })}
+                      className="ml-2 hover:text-purple-600"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                
+                {filters.facilities.length > 0 && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                    Facilities: {filters.facilities.length}
+                    <button
+                      onClick={() => handleFilter({ ...filters, facilities: [] })}
+                      className="ml-2 hover:text-yellow-600"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
 
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -95,16 +215,29 @@ export const Home = () => {
                   </p>
                 </div>
               </div>
-            ) : rooms?.data.length === 0 ? (
+            ) : roomsData.length === 0 ? (
               <div className="text-center py-12">
                 <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-600 text-yellow-700 dark:text-yellow-200 px-4 py-3 rounded-lg max-w-md mx-auto">
                   <p className="font-semibold">No rooms found</p>
-                  <p className="text-sm mt-1">Try adjusting your filters</p>
+                  <p className="text-sm mt-1">
+                    {activeFiltersCount > 0 
+                      ? 'Try adjusting your filters' 
+                      : 'All rooms are currently booked'
+                    }
+                  </p>
+                  {activeFiltersCount > 0 && (
+                    <button
+                      onClick={clearFilters}
+                      className="mt-3 bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-300"
+                    >
+                      Clear all filters
+                    </button>
+                  )}
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {rooms?.data.map(room => (
+                {roomsData.map(room => (
                   <RoomCard key={room.id} room={room} />
                 ))}
               </div>
