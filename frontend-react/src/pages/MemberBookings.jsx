@@ -2,24 +2,43 @@ import { useQuery } from '@tanstack/react-query'
 import { bookingsAPI } from '../api/bookings'
 import { formatCurrency } from '../utils/formatCurrency'
 import { formatDate } from '../utils/dateUtils'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 
 export const MemberBookings = () => {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
+  
   const { 
     data: bookings, 
     isLoading, 
     error,
     isError 
   } = useQuery({
-    queryKey: ['my-bookings'],
+    queryKey: ['my-bookings', searchTerm],
     queryFn: () => bookingsAPI.getMyBookings(),
     retry: 1
   })
+
+  // Update URL ketika search berubah
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchTerm) {
+        searchParams.set('search', searchTerm)
+      } else {
+        searchParams.delete('search')
+      }
+      setSearchParams(searchParams)
+    }, 300) // Debounce 300ms
+
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm, searchParams, setSearchParams])
 
   // DEBUG
   console.log('🔍 Full axios response:', bookings)
   console.log('🔍 bookings.data:', bookings?.data)
   console.log('🔍 bookings.data.data:', bookings?.data?.data)
+  console.log('🔍 Search term:', searchTerm)
 
   const getStatusColor = (status) => {
     const colors = {
@@ -30,6 +49,34 @@ export const MemberBookings = () => {
       cancelled: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
     }
     return colors[status] || colors.pending
+  }
+
+  // Filter bookings berdasarkan search term
+  const filterBookings = (bookingsData) => {
+    if (!searchTerm) return bookingsData
+
+    const lowerSearchTerm = searchTerm.toLowerCase()
+    
+    return bookingsData.filter(booking => {
+      return (
+        (booking.id && booking.id.toLowerCase().includes(lowerSearchTerm)) ||
+        (booking.guest_name && booking.guest_name.toLowerCase().includes(lowerSearchTerm)) ||
+        (booking.phone && booking.phone.includes(lowerSearchTerm)) ||
+        (booking.status && booking.status.toLowerCase().includes(lowerSearchTerm)) ||
+        (booking.payment_method && booking.payment_method.toLowerCase().includes(lowerSearchTerm)) ||
+        (booking.booking_rooms && booking.booking_rooms.some(room => 
+          room.room_type && room.room_type.toLowerCase().includes(lowerSearchTerm)
+        )) ||
+        (booking.check_in && formatDate(booking.check_in).toLowerCase().includes(lowerSearchTerm)) ||
+        (booking.check_out && formatDate(booking.check_out).toLowerCase().includes(lowerSearchTerm))
+      )
+    })
+  }
+
+  const clearSearch = () => {
+    setSearchTerm('')
+    searchParams.delete('search')
+    setSearchParams(searchParams)
   }
 
   if (isLoading) {
@@ -76,15 +123,70 @@ export const MemberBookings = () => {
   const bookingsData = bookings?.data?.data || []
   const bookingsCount = bookings?.data?.count || 0
 
+  // Filter bookings berdasarkan search
+  const filteredBookings = filterBookings(bookingsData)
+  const filteredCount = filteredBookings.length
+
   console.log('✅ Bookings data:', bookingsData)
   console.log('✅ Bookings count:', bookingsCount)
+  console.log('✅ Filtered bookings:', filteredBookings)
+  console.log('✅ Filtered count:', filteredCount)
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-8">
-          My Bookings {bookingsCount > 0 && `(${bookingsCount})`}
-        </h1>
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+            My Bookings {bookingsCount > 0 && `(${bookingsCount})`}
+          </h1>
+          
+          {/* Search Box */}
+          <div className="relative w-full lg:w-80">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search bookings..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              {searchTerm && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-300"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Search Info */}
+        {searchTerm && (
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-700 rounded-lg">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <p className="text-blue-700 dark:text-blue-300">
+                Showing {filteredCount} of {bookingsCount} bookings matching "<strong>{searchTerm}</strong>"
+              </p>
+              <button
+                onClick={clearSearch}
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-sm font-medium transition-colors duration-300 whitespace-nowrap"
+              >
+                Clear search
+              </button>
+            </div>
+          </div>
+        )}
+
+        
 
         {bookingsData.length === 0 ? (
           <div className="text-center py-12">
@@ -103,10 +205,30 @@ export const MemberBookings = () => {
               </Link>
             </div>
           </div>
+        ) : filteredBookings.length === 0 && searchTerm ? (
+          <div className="text-center py-12">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 max-w-md mx-auto">
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+                No bookings found
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                No bookings match your search for "<strong>{searchTerm}</strong>"
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                Try searching with different terms or check the spelling.
+              </p>
+              <button
+                onClick={clearSearch}
+                className="bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-lg transition-colors duration-300 font-semibold"
+              >
+                Show All Bookings
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="space-y-6">
-            {bookingsData.map((booking, index) => (
-              <div key={booking.id || index} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+            {filteredBookings.map((booking, index) => (
+              <div key={booking.id || index} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow duration-300">
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2">
@@ -179,6 +301,42 @@ export const MemberBookings = () => {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Quick Status Filter Buttons */}
+        {bookingsData.length > 0 && (
+          <div className="mt-8 flex flex-wrap gap-2 justify-center">
+            <button
+              onClick={() => setSearchTerm('pending')}
+              className="px-3 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 rounded-full text-sm hover:bg-yellow-200 dark:hover:bg-yellow-800 transition-colors duration-300"
+            >
+              Pending
+            </button>
+            <button
+              onClick={() => setSearchTerm('confirmed')}
+              className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full text-sm hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors duration-300"
+            >
+              Confirmed
+            </button>
+            <button
+              onClick={() => setSearchTerm('checked_in')}
+              className="px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full text-sm hover:bg-green-200 dark:hover:bg-green-800 transition-colors duration-300"
+            >
+              Checked In
+            </button>
+            <button
+              onClick={() => setSearchTerm('checked_out')}
+              className="px-3 py-1 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-full text-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-300"
+            >
+              Checked Out
+            </button>
+            <button
+              onClick={() => setSearchTerm('cancelled')}
+              className="px-3 py-1 bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded-full text-sm hover:bg-red-200 dark:hover:bg-red-800 transition-colors duration-300"
+            >
+              Cancelled
+            </button>
           </div>
         )}
       </div>
