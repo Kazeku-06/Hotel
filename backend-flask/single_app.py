@@ -28,9 +28,9 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
 
-# Enable CORS for specific frontend origin with credentials and headers
-CORS(app,
-     resources={r"/api/*": {"origins": "http://localhost:3000"}},
+# FIXED CORS CONFIGURATION - YANG PASTI BEKERJA
+CORS(app, 
+     origins=["http://localhost:3000", "http://127.0.0.1:3000"],
      supports_credentials=True,
      allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
@@ -171,6 +171,7 @@ class Rating(db.Model):
 def home():
     return jsonify({'message': 'Hotel API is running!', 'database': 'MySQL with Laragon'})
 
+# ==== AUTH ROUTES ====
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     try:
@@ -233,6 +234,192 @@ def login():
     except Exception as e:
         return jsonify({'message': str(e)}), 400
 
+# ==== AUTH ME ROUTE ====
+@app.route('/api/auth/me', methods=['GET'])
+@jwt_required()
+def get_current_user():
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+        
+        return jsonify({
+            'id': user.id,
+            'name': user.name,
+            'email': user.email,
+            'role': user.role,
+            'phone': user.phone,
+            'created_at': user.created_at.isoformat() if user.created_at else None
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+# ==== FACILITY ROUTES ====
+@app.route('/api/facilities', methods=['GET'])
+def get_facilities():
+    try:
+        facilities = Facility.query.all()
+        result = []
+        for facility in facilities:
+            result.append({
+                'id': facility.id,
+                'name': facility.name,
+                'icon': facility.icon,
+                'created_at': facility.created_at.isoformat() if facility.created_at else None
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+@app.route('/api/admin/facilities', methods=['GET', 'POST'])
+@jwt_required()
+def admin_facilities():
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        # Check if user is admin
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        if request.method == 'GET':
+            facilities = Facility.query.all()
+            result = []
+            for facility in facilities:
+                result.append({
+                    'id': facility.id,
+                    'name': facility.name,
+                    'icon': facility.icon,
+                    'created_at': facility.created_at.isoformat() if facility.created_at else None
+                })
+            return jsonify(result), 200
+
+        elif request.method == 'POST':
+            data = request.get_json()
+            
+            if not data.get('name'):
+                return jsonify({'message': 'Facility name is required'}), 400
+
+            # Check if facility already exists
+            if Facility.query.filter_by(name=data.get('name')).first():
+                return jsonify({'message': 'Facility already exists'}), 400
+
+            facility = Facility(
+                name=data.get('name'),
+                icon=data.get('icon', '')
+            )
+            
+            db.session.add(facility)
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Facility created successfully',
+                'facility': {
+                    'id': facility.id,
+                    'name': facility.name,
+                    'icon': facility.icon
+                }
+            }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+# Update admin rooms untuk include facilities
+@app.route('/api/admin/rooms/<room_id>/facilities', methods=['GET', 'POST', 'DELETE'])
+@jwt_required()
+def room_facilities(room_id):
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        # Check if user is admin
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        room = Room.query.get(room_id)
+        if not room:
+            return jsonify({'message': 'Room not found'}), 404
+
+        if request.method == 'GET':
+            # Get all facilities for this room
+            room_facilities = FacilityRoom.query.filter_by(room_id=room_id).all()
+            result = []
+            for rf in room_facilities:
+                result.append({
+                    'id': rf.facility.id,
+                    'name': rf.facility.name,
+                    'icon': rf.facility.icon
+                })
+            return jsonify(result), 200
+
+        elif request.method == 'POST':
+            data = request.get_json()
+            facility_id = data.get('facility_id')
+            
+            if not facility_id:
+                return jsonify({'message': 'Facility ID is required'}), 400
+
+            # Check if facility exists
+            facility = Facility.query.get(facility_id)
+            if not facility:
+                return jsonify({'message': 'Facility not found'}), 404
+
+            # Check if facility already added to room
+            existing_facility = FacilityRoom.query.filter_by(
+                room_id=room_id, 
+                facility_id=facility_id
+            ).first()
+            
+            if existing_facility:
+                return jsonify({'message': 'Facility already added to room'}), 400
+
+            # Add facility to room
+            room_facility = FacilityRoom(
+                room_id=room_id,
+                facility_id=facility_id
+            )
+            
+            db.session.add(room_facility)
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Facility added to room successfully',
+                'facility': {
+                    'id': facility.id,
+                    'name': facility.name,
+                    'icon': facility.icon
+                }
+            }), 201
+
+        elif request.method == 'DELETE':
+            facility_id = request.args.get('facility_id')
+            
+            if not facility_id:
+                return jsonify({'message': 'Facility ID is required'}), 400
+
+            # Find and remove facility from room
+            room_facility = FacilityRoom.query.filter_by(
+                room_id=room_id, 
+                facility_id=facility_id
+            ).first()
+            
+            if not room_facility:
+                return jsonify({'message': 'Facility not found in room'}), 404
+
+            db.session.delete(room_facility)
+            db.session.commit()
+            
+            return jsonify({'message': 'Facility removed from room successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+# ==== ROOM ROUTES ====
 @app.route('/api/rooms', methods=['GET'])
 def get_rooms():
     try:
@@ -248,6 +435,15 @@ def get_rooms():
             if not primary_photo and room.photos:
                 primary_photo = f"/{room.photos[0].photo_path}"
                 
+            # Get room facilities
+            facilities = []
+            for fr in room.facility_rooms:
+                facilities.append({
+                    'id': fr.facility.id,
+                    'name': fr.facility.name,
+                    'icon': fr.facility.icon
+                })
+                
             result.append({
                 'id': room.id,
                 'room_number': room.room_number,
@@ -257,6 +453,7 @@ def get_rooms():
                 'status': room.status,
                 'description': room.description,
                 'primary_photo': primary_photo,
+                'facility_rooms': facilities,
                 'room_type': {
                     'id': room.room_type.id,
                     'name': room.room_type.name
@@ -265,7 +462,57 @@ def get_rooms():
         return jsonify(result), 200
     except Exception as e:
         return jsonify({'message': str(e)}), 500
-    
+
+# ==== Single Room Detail ====
+@app.route('/api/rooms/<room_id>', methods=['GET'])
+def get_room(room_id):
+    try:
+        room = Room.query.get(room_id)
+        if not room:
+            return jsonify({'message': 'Room not found'}), 404
+        
+        # Get room photos
+        photos = []
+        for photo in room.photos:
+            photos.append({
+                'id': photo.id,
+                'photo_path': f"/{photo.photo_path}",
+                'is_primary': getattr(photo, 'is_primary', False)
+            })
+        
+        # Get room facilities
+        facilities = []
+        for fr in room.facility_rooms:
+            facilities.append({
+                'id': fr.facility.id,
+                'name': fr.facility.name,
+                'icon': fr.facility.icon
+            })
+        
+        result = {
+            'id': room.id,
+            'room_number': room.room_number,
+            'room_type_id': room.room_type_id,
+            'room_type': {
+                'id': room.room_type.id,
+                'name': room.room_type.name,
+                'description': room.room_type.description
+            } if room.room_type else None,
+            'capacity': room.capacity,
+            'price_no_breakfast': room.price_no_breakfast,
+            'price_with_breakfast': room.price_with_breakfast,
+            'status': room.status,
+            'description': room.description,
+            'photos': photos,
+            'facilities': facilities,
+            'created_at': room.created_at.isoformat() if room.created_at else None
+        }
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
 # ==== RATINGS ROUTES ====
 @app.route('/api/ratings', methods=['GET', 'POST'])
 @jwt_required()
@@ -397,47 +644,7 @@ def admin_ratings():
         return jsonify({
             'success': False,
             'message': str(e)
-        }), 500    
-
-# ==== Single Room Detail ====
-@app.route('/api/rooms/<room_id>', methods=['GET'])
-def get_room(room_id):
-    try:
-        room = Room.query.get(room_id)
-        if not room:
-            return jsonify({'message': 'Room not found'}), 404
-        
-        # Get room photos
-        photos = []
-        for photo in room.photos:
-            photos.append({
-                'id': photo.id,
-                'photo_path': f"/{photo.photo_path}",
-                'is_primary': getattr(photo, 'is_primary', False)
-            })
-        
-        result = {
-            'id': room.id,
-            'room_number': room.room_number,
-            'room_type_id': room.room_type_id,
-            'room_type': {
-                'id': room.room_type.id,
-                'name': room.room_type.name,
-                'description': room.room_type.description
-            } if room.room_type else None,
-            'capacity': room.capacity,
-            'price_no_breakfast': room.price_no_breakfast,
-            'price_with_breakfast': room.price_with_breakfast,
-            'status': room.status,
-            'description': room.description,
-            'photos': photos,
-            'created_at': room.created_at.isoformat() if room.created_at else None
-        }
-        
-        return jsonify(result), 200
-        
-    except Exception as e:
-        return jsonify({'message': str(e)}), 500
+        }), 500
 
 # ==== BOOKINGS ROUTES ====
 @app.route('/api/bookings', methods=['POST'])
@@ -745,6 +952,15 @@ def admin_rooms():
                     print(f"Error loading photos for room {room.id}: {photo_error}")
                     # Continue without photos if there's an error
                 
+                # Get room facilities
+                facilities = []
+                for fr in room.facility_rooms:
+                    facilities.append({
+                        'id': fr.facility.id,
+                        'name': fr.facility.name,
+                        'icon': fr.facility.icon
+                    })
+                
                 result.append({
                     'id': room.id,
                     'room_number': room.room_number,
@@ -760,6 +976,7 @@ def admin_rooms():
                     'status': room.status,
                     'description': room.description,
                     'photos': photos,
+                    'facility_rooms': facilities,
                     'created_at': room.created_at.isoformat() if room.created_at else None
                 })
             return jsonify(result), 200
@@ -922,6 +1139,9 @@ def admin_room_detail(room_id):
                 photo.delete_photo_file()
                 db.session.delete(photo)
             
+            # Delete facility associations
+            FacilityRoom.query.filter_by(room_id=room_id).delete()
+            
             db.session.delete(room)
             db.session.commit()
             
@@ -959,7 +1179,7 @@ def delete_room_photo(room_id, photo_id):
 def serve_uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# Seed sample data
+# Seed sample data dengan facilities
 def seed_data():
     try:
         if not User.query.filter_by(email='admin@hotel.com').first():
@@ -971,6 +1191,26 @@ def seed_data():
             admin.set_password('admin123')
             db.session.add(admin)
             print("✅ Admin user created")
+
+        # Seed facilities
+        facilities_data = [
+            {'name': 'WiFi', 'icon': '📶'},
+            {'name': 'AC', 'icon': '❄️'},
+            {'name': 'TV', 'icon': '📺'},
+            {'name': 'Breakfast', 'icon': '🍳'},
+            {'name': 'Swimming Pool', 'icon': '🏊'},
+            {'name': 'Parking', 'icon': '🅿️'},
+            {'name': 'Gym', 'icon': '💪'},
+            {'name': 'Spa', 'icon': '💆'},
+        ]
+        
+        facilities = []
+        for facility_data in facilities_data:
+            if not Facility.query.filter_by(name=facility_data['name']).first():
+                facility = Facility(**facility_data)
+                db.session.add(facility)
+                facilities.append(facility)
+                print(f"✅ Facility {facility_data['name']} created")
 
         room_types_data = [
             {'name': 'Standard', 'description': 'Comfortable standard room'},
@@ -996,7 +1236,8 @@ def seed_data():
                     'capacity': 2,
                     'price_no_breakfast': 500000,
                     'price_with_breakfast': 600000,
-                    'description': 'Standard room with city view'
+                    'description': 'Standard room with city view',
+                    'facilities': [facilities[0], facilities[1], facilities[2]]  # WiFi, AC, TV
                 },
                 {
                     'room_type_id': room_types[1].id,
@@ -1004,7 +1245,8 @@ def seed_data():
                     'capacity': 3,
                     'price_no_breakfast': 800000,
                     'price_with_breakfast': 900000,
-                    'description': 'Deluxe room with balcony'
+                    'description': 'Deluxe room with balcony',
+                    'facilities': [facilities[0], facilities[1], facilities[2], facilities[3]]  # WiFi, AC, TV, Breakfast
                 },
                 {
                     'room_type_id': room_types[2].id,
@@ -1012,14 +1254,26 @@ def seed_data():
                     'capacity': 4,
                     'price_no_breakfast': 1200000,
                     'price_with_breakfast': 1400000,
-                    'description': 'Luxury suite with jacuzzi'
+                    'description': 'Luxury suite with jacuzzi',
+                    'facilities': facilities  # All facilities
                 }
             ]
             
             for room_data in rooms_data:
+                room_facilities = room_data.pop('facilities', [])
                 room = Room(**room_data)
                 db.session.add(room)
-                print(f"✅ Room {room_data['room_number']} created")
+                db.session.flush()  # Get room ID
+                
+                # Add facilities to room
+                for facility in room_facilities:
+                    room_facility = FacilityRoom(
+                        room_id=room.id,
+                        facility_id=facility.id
+                    )
+                    db.session.add(room_facility)
+                
+                print(f"✅ Room {room_data['room_number']} created with {len(room_facilities)} facilities")
             
             db.session.commit()
             
@@ -1042,17 +1296,14 @@ if __name__ == '__main__':
             print(f"❌ Error: {e}")
     
     print("🚀 Server starting on http://localhost:5000")
-    print("💡 Test endpoints:")
-    print("   GET  http://localhost:5000/")
-    print("   GET  http://localhost:5000/api/rooms")
-    print("   GET  http://localhost:5000/api/rooms/ROOM_ID")
-    print("   POST http://localhost:5000/api/auth/register")
-    print("   POST http://localhost:5000/api/auth/login")
-    print("   POST http://localhost:5000/api/bookings (JWT required)")
-    print("   GET  http://localhost:5000/api/bookings/me (JWT required)")
-    print("   GET  http://localhost:5000/api/admin/bookings (Admin only)")
-    print("   PUT  http://localhost:5000/api/admin/bookings/ID/status (Admin only)")
-    print("   GET  http://localhost:5000/api/admin/rooms (Admin only)")
-    print("   POST http://localhost:5000/api/admin/rooms (Admin only)")
+    print("✅ CORS Enabled for: http://localhost:3000")
+    print("💡 Available Endpoints:")
+    print("   🔐 AUTH: /api/auth/register, /api/auth/login, /api/auth/me")
+    print("   🏨 ROOMS: /api/rooms, /api/rooms/<id>")
+    print("   📖 BOOKINGS: /api/bookings, /api/bookings/me")
+    print("   ⭐ RATINGS: /api/ratings, /api/admin/ratings")
+    print("   🛠️ FACILITIES: /api/facilities, /api/admin/facilities")
+    print("   👑 ADMIN: /api/admin/bookings, /api/admin/rooms")
+    print("   🏨 ADMIN ROOM FACILITIES: /api/admin/rooms/<id>/facilities")
     
     app.run(debug=True, port=5000)

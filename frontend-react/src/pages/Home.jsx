@@ -24,7 +24,7 @@ export const Home = () => {
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-6xl font-bold text-gray-800 dark:text-white mb-6">
-            Welcome to <span className="text-gold-500">Luxury Hotel</span>
+            Welcome to <span className="text-gold-500">Grand Imperion</span>
           </h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-8">
             Experience unparalleled comfort and luxury in the heart of the city
