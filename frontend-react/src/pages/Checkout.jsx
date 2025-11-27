@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { useAuth } from '../context/AuthContext'
@@ -14,6 +14,13 @@ export const Checkout = () => {
   const [error, setError] = useState('')
 
   const room = location.state?.room
+
+  // UPDATE: Validasi room status
+  useEffect(() => {
+    if (room && room.status !== 'available') {
+      setError(`This room is currently ${room.status} and cannot be booked. Please choose another room.`)
+    }
+  }, [room])
 
   const { register, handleSubmit, formState: { errors }, watch } = useForm({
     defaultValues: {
@@ -38,48 +45,56 @@ export const Checkout = () => {
   const totalPrice = nights * (pricePerNight || 0)
 
   const onSubmit = async (data) => {
-  if (!room) {
-    setError('Room information is missing')
-    return
-  }
-
-  setLoading(true)
-  setError('')
-
-  try {
-    // HAPUS total_price - biarkan backend yang menghitung berdasarkan nights
-    const bookingData = {
-      nik: data.nik,
-      guest_name: data.guest_name,
-      phone: data.phone,
-      check_in: data.check_in,
-      check_out: data.check_out,
-      total_guests: parseInt(data.total_guests),
-      payment_method: data.payment_method,
-      rooms: [
-        {
-          room_id: room.id,
-          quantity: 1,
-          breakfast_option: data.breakfast_option
-        }
-      ]
+    // UPDATE: Double check room status sebelum submit
+    if (!room) {
+      setError('Room information is missing')
+      return
     }
 
-    console.log('📤 Sending booking data:', bookingData)
-
-    const response = await bookingsAPI.createBooking(bookingData)
-    
-    if (response.data) {
-      navigate('/my-bookings', { 
-        state: { message: 'Booking successful!' } 
-      })
+    if (room.status !== 'available') {
+      setError(`This room is currently ${room.status} and cannot be booked. Please choose another room.`)
+      return
     }
-  } catch (err) {
-    setError(err.response?.data?.message || 'Booking failed. Please try again.')
-  } finally {
-    setLoading(false)
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const bookingData = {
+        nik: data.nik,
+        guest_name: data.guest_name,
+        phone: data.phone,
+        check_in: data.check_in,
+        check_out: data.check_out,
+        total_guests: parseInt(data.total_guests),
+        payment_method: data.payment_method,
+        rooms: [
+          {
+            room_id: room.id,
+            quantity: 1,
+            breakfast_option: data.breakfast_option
+          }
+        ]
+      }
+
+      console.log('📤 Sending booking data:', bookingData)
+
+      const response = await bookingsAPI.createBooking(bookingData)
+      
+      if (response.data) {
+        navigate('/my-bookings', { 
+          state: { message: 'Booking successful!' } 
+        })
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Booking failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
-}
+
+  // UPDATE: Disable form jika room tidak available
+  const isFormDisabled = !room || room.status !== 'available'
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -102,6 +117,12 @@ export const Checkout = () => {
                 </div>
               )}
 
+              {isFormDisabled && (
+                <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-600 text-yellow-700 dark:text-yellow-200 px-4 py-3 rounded-lg mb-6">
+                  ⚠️ This room is currently {room?.status}. Booking is not available.
+                </div>
+              )}
+
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -111,7 +132,8 @@ export const Checkout = () => {
                     <input
                       {...register('guest_name', { required: 'Guest name is required' })}
                       type="text"
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                      disabled={isFormDisabled}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300 disabled:bg-gray-100 disabled:text-gray-500"
                     />
                     {errors.guest_name && (
                       <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.guest_name.message}</p>
@@ -131,7 +153,8 @@ export const Checkout = () => {
                         }
                       })}
                       type="text"
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                      disabled={isFormDisabled}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300 disabled:bg-gray-100 disabled:text-gray-500"
                       placeholder="16 digit NIK"
                     />
                     {errors.nik && (
@@ -147,7 +170,8 @@ export const Checkout = () => {
                   <input
                     {...register('phone', { required: 'Phone number is required' })}
                     type="tel"
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                    disabled={isFormDisabled}
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300 disabled:bg-gray-100 disabled:text-gray-500"
                   />
                   {errors.phone && (
                     <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.phone.message}</p>
@@ -162,8 +186,9 @@ export const Checkout = () => {
                     <input
                       {...register('check_in', { required: 'Check-in date is required' })}
                       type="date"
+                      disabled={isFormDisabled}
                       min={new Date().toISOString().split('T')[0]}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300 disabled:bg-gray-100 disabled:text-gray-500"
                     />
                     {errors.check_in && (
                       <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.check_in.message}</p>
@@ -180,8 +205,9 @@ export const Checkout = () => {
                         validate: value => !checkIn || value > checkIn || 'Check-out must be after check-in'
                       })}
                       type="date"
+                      disabled={isFormDisabled}
                       min={checkIn || new Date().toISOString().split('T')[0]}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300 disabled:bg-gray-100 disabled:text-gray-500"
                     />
                     {errors.check_out && (
                       <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.check_out.message}</p>
@@ -199,7 +225,8 @@ export const Checkout = () => {
                         required: 'Total guests is required',
                         max: { value: room.capacity, message: `Maximum capacity is ${room.capacity}` }
                       })}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                      disabled={isFormDisabled}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300 disabled:bg-gray-100 disabled:text-gray-500"
                     >
                       {Array.from({ length: room.capacity }, (_, i) => (
                         <option key={i + 1} value={i + 1}>
@@ -218,7 +245,8 @@ export const Checkout = () => {
                     </label>
                     <select
                       {...register('breakfast_option')}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                      disabled={isFormDisabled}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300 disabled:bg-gray-100 disabled:text-gray-500"
                     >
                       <option value="without">Without Breakfast</option>
                       <option value="with">With Breakfast</option>
@@ -232,7 +260,8 @@ export const Checkout = () => {
                   </label>
                   <select
                     {...register('payment_method', { required: 'Payment method is required' })}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                    disabled={isFormDisabled}
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300 disabled:bg-gray-100 disabled:text-gray-500"
                   >
                     <option value="credit_card">Credit Card</option>
                     <option value="debit_card">Debit Card</option>
@@ -246,7 +275,7 @@ export const Checkout = () => {
 
                 <button
                   type="submit"
-                  disabled={loading || !checkIn || !checkOut}
+                  disabled={loading || !checkIn || !checkOut || isFormDisabled}
                   className="w-full bg-gold-500 hover:bg-gold-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300"
                 >
                   {loading ? (
@@ -254,6 +283,8 @@ export const Checkout = () => {
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                       Processing...
                     </div>
+                  ) : isFormDisabled ? (
+                    `Room ${room?.status?.toUpperCase()} - Cannot Book`
                   ) : (
                     `Complete Booking - ${formatCurrency(totalPrice)}`
                   )}
@@ -281,6 +312,14 @@ export const Checkout = () => {
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       Capacity: {room.capacity} people
                     </p>
+                    {/* UPDATE: Tampilkan status room */}
+                    <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${
+                      room.status === 'available' ? 'bg-green-100 text-green-800' :
+                      room.status === 'booked' ? 'bg-blue-100 text-blue-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {room.status?.toUpperCase()}
+                    </div>
                   </div>
                 </div>
 

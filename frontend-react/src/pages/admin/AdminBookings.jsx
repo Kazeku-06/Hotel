@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { bookingsAPI } from '../../api/bookings'
 import { formatCurrency } from '../../utils/formatCurrency'
 import { formatDate } from '../../utils/dateUtils'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 export const AdminBookings = () => {
   const queryClient = useQueryClient()
@@ -10,16 +10,39 @@ export const AdminBookings = () => {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showStatusModal, setShowStatusModal] = useState(false)
 
-  const { data: bookings, isLoading, error } = useQuery({
+  const { data: bookingsResponse, isLoading, error } = useQuery({
     queryKey: ['admin-bookings'],
     queryFn: () => bookingsAPI.getAllBookings()
   })
 
-  // DEBUG: Lihat struktur data
-  console.log('🔍 DEBUG AdminBookings data:', bookings)
-  console.log('🔍 DEBUG bookings type:', typeof bookings)
-  console.log('🔍 DEBUG bookings.data:', bookings?.data)
-  console.log('🔍 DEBUG is bookings.data array?', Array.isArray(bookings?.data))
+  // FIX: Handle data structure properly
+  const bookingsList = useMemo(() => {
+    if (!bookingsResponse) return []
+    
+    console.log('🔍 DEBUG Raw bookings data:', bookingsResponse)
+    
+    // Coba berbagai kemungkinan struktur data
+    if (Array.isArray(bookingsResponse)) {
+      return bookingsResponse
+    } 
+    else if (bookingsResponse.data && Array.isArray(bookingsResponse.data)) {
+      return bookingsResponse.data
+    }
+    else if (bookingsResponse.success && Array.isArray(bookingsResponse.data)) {
+      return bookingsResponse.data
+    }
+    else if (bookingsResponse.data && bookingsResponse.data.success && Array.isArray(bookingsResponse.data.data)) {
+      return bookingsResponse.data.data
+    }
+    else {
+      console.warn('❌ Unknown bookings data structure:', bookingsResponse)
+      return []
+    }
+  }, [bookingsResponse])
+
+  // DEBUG yang lebih baik
+  console.log('✅ Final bookingsList:', bookingsList)
+  console.log('✅ bookingsList length:', bookingsList.length)
 
   // Mutation untuk update status booking
   const updateStatusMutation = useMutation({
@@ -77,16 +100,6 @@ export const AdminBookings = () => {
     return statusFlow[currentStatus] || []
   }
 
-  // PERBAIKAN: Handle berbagai struktur data
-  const bookingsList = 
-    Array.isArray(bookings) ? bookings : // Jika bookings langsung array
-    Array.isArray(bookings?.data) ? bookings.data : // Jika bookings.data adalah array
-    Array.isArray(bookings?.data?.data) ? bookings.data.data : // Jika bookings.data.data adalah array
-    Array.isArray(bookings?.bookings) ? bookings.bookings : 
-    []
-
-  console.log('✅ Processed bookingsList:', bookingsList)
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -128,7 +141,7 @@ export const AdminBookings = () => {
             Manage Bookings
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            View and manage all hotel bookings
+            View and manage all hotel bookings | Total: {bookingsList.length} bookings
           </p>
         </div>
 
@@ -347,8 +360,8 @@ export const AdminBookings = () => {
                         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                           {status === 'confirmed' && 'Confirm the booking'}
                           {status === 'checked_in' && 'Check-in guest'}
-                          {status === 'checked_out' && 'Check-out guest'}
-                          {status === 'cancelled' && 'Cancel booking'}
+                          {status === 'checked_out' && 'Check-out guest (Room will become available)'}
+                          {status === 'cancelled' && 'Cancel booking (Room will become available)'}
                         </span>
                       </div>
                       {!updateStatusMutation.isLoading && (

@@ -77,7 +77,8 @@ class Room(db.Model):
     capacity = db.Column(db.Integer, nullable=False)
     price_no_breakfast = db.Column(db.Float, nullable=False)
     price_with_breakfast = db.Column(db.Float, nullable=False)
-    status = db.Column(db.Enum('available', 'unavailable'), default='available')
+    # UPDATE: Tambah status 'booked'
+    status = db.Column(db.Enum('available', 'unavailable', 'booked'), default='available')
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -450,7 +451,7 @@ def get_rooms():
                 'capacity': room.capacity,
                 'price_no_breakfast': room.price_no_breakfast,
                 'price_with_breakfast': room.price_with_breakfast,
-                'status': room.status,
+                'status': room.status,  # UPDATE: Include status in response
                 'description': room.description,
                 'primary_photo': primary_photo,
                 'facility_rooms': facilities,
@@ -681,8 +682,9 @@ def create_booking():
             if not room:
                 return jsonify({'message': f'Room not found: {room_data["room_id"]}'}), 404
             
+            # UPDATE: Check if room is available (bukan unavailable atau booked)
             if room.status != 'available':
-                return jsonify({'message': f'Room {room.room_number} is not available'}), 400
+                return jsonify({'message': f'Room {room.room_number} is not available. Current status: {room.status}'}), 400
             
             price_per_night = room.price_with_breakfast if room_data['breakfast_option'] == 'with' else room.price_no_breakfast
             subtotal = price_per_night * room_data['quantity'] * nights
@@ -718,8 +720,12 @@ def create_booking():
         db.session.add(booking)
         db.session.flush()
         
-        # Create booking rooms
+        # UPDATE: Set room status to 'booked' dan create booking rooms
         for br_data in booking_rooms:
+            # Update room status to booked
+            br_data['room'].status = 'booked'
+            print(f"🔄 Room {br_data['room'].room_number} status set to booked")
+            
             booking_room = BookingRoom(
                 booking_id=booking.id,
                 room_id=br_data['room'].id,
@@ -885,6 +891,7 @@ def update_booking_status(booking_id):
             return jsonify({'message': 'No data provided'}), 400
             
         new_status = data.get('status')
+        old_status = booking.status
         
         if not new_status:
             return jsonify({'message': 'Status is required'}), 400
@@ -893,11 +900,48 @@ def update_booking_status(booking_id):
         if new_status not in valid_statuses:
             return jsonify({'message': 'Invalid status'}), 400
         
-        print(f"🔄 Updating booking {booking_id} status from {booking.status} to {new_status}")
+        print(f"🔄 Updating booking {booking_id} status from {old_status} to {new_status}")
+        
+        # DEBUG: Log room status sebelum update
+        for booking_room in booking.booking_rooms:
+            room = Room.query.get(booking_room.room_id)
+            if room:
+                print(f"🔍 DEBUG Room {room.room_number} current status: {room.status}")
+        
+        # UPDATE: Handle room status changes based on booking status
+        if new_status == 'cancelled' and old_status != 'cancelled':
+            # Jika booking dibatalkan, kembalikan room status ke available
+            for booking_room in booking.booking_rooms:
+                room = Room.query.get(booking_room.room_id)
+                if room:
+                    room.status = 'available'
+                    print(f"🔄 Room {room.room_number} status set to available (cancelled)")
+        
+        elif old_status == 'cancelled' and new_status != 'cancelled':
+            # Jika booking diaktifkan kembali dari cancelled, set room ke booked
+            for booking_room in booking.booking_rooms:
+                room = Room.query.get(booking_room.room_id)
+                if room:
+                    room.status = 'booked'
+                    print(f"🔄 Room {room.room_number} status set to booked (re-activated)")
+        
+        elif new_status == 'checked_out':
+            # Setelah check-out, room menjadi available lagi
+            for booking_room in booking.booking_rooms:
+                room = Room.query.get(booking_room.room_id)
+                if room:
+                    print(f"🔄 Changing room {room.room_number} from {room.status} to available (check-out)")
+                    room.status = 'available'
         
         # Update booking status
         booking.status = new_status
         db.session.commit()
+        
+        # DEBUG: Log room status setelah update
+        for booking_room in booking.booking_rooms:
+            room = Room.query.get(booking_room.room_id)
+            if room:
+                print(f"✅ Room {room.room_number} final status: {room.status}")
         
         return jsonify({
             'success': True,
@@ -1287,6 +1331,41 @@ if __name__ == '__main__':
             print("🔧 Creating database tables...")
             db.create_all()
             print("✅ Database tables created!")
+            
+            # FIX: Simple migration approach untuk enum
+            print("🔄 Running migration for room status...")
+            try:
+                # Cek dulu struktur kolom saat ini
+                result = db.engine.execute("SHOW COLUMNS FROM rooms LIKE 'status'").fetchone()
+                current_type = result[1] if result else None
+                print(f"📋 Current room status type: {current_type}")
+                
+                if current_type and 'booked' not in current_type:
+                    print("🔄 Updating room status enum to include 'booked'...")
+                    # Method yang lebih robust
+                    db.engine.execute("""
+                        ALTER TABLE rooms 
+                        CHANGE status status 
+                        ENUM('available', 'unavailable', 'booked') 
+                        CHARACTER SET utf8mb4 
+                        COLLATE utf8mb4_unicode_ci 
+                        NOT NULL DEFAULT 'available'
+                    """)
+                    print("✅ Room status enum updated successfully!")
+                else:
+                    print("✅ Room status enum already includes 'booked'")
+                    
+            except Exception as migration_error:
+                print(f"❌ Migration failed: {migration_error}")
+                print("💡 Manual SQL required. Run this in MySQL:")
+                print("""
+                ALTER TABLE rooms 
+                MODIFY COLUMN status 
+                ENUM('available', 'unavailable', 'booked') 
+                NOT NULL DEFAULT 'available';
+                """)
+                # Fallback: Continue without migration
+                print("⚠️ Continuing without migration...")
             
             print("🌱 Seeding sample data...")
             seed_data()

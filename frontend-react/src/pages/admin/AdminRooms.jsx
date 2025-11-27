@@ -147,6 +147,17 @@ export const AdminRooms = () => {
     }
   })
 
+  // Function untuk toggle facility selection
+  const toggleFacility = (facilityId) => {
+    setSelectedFacilities(prev => {
+      if (prev.includes(facilityId)) {
+        return prev.filter(id => id !== facilityId);
+      } else {
+        return [...prev, facilityId];
+      }
+    });
+  };
+
   const getStatusColor = (status) => {
     return status === 'available' 
       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -180,6 +191,15 @@ export const AdminRooms = () => {
       status: room.status
     })
     setSelectedFiles([])
+    
+    // Set selected facilities dari room yang diedit
+    if (room.facility_rooms && room.facility_rooms.length > 0) {
+      const facilityIds = room.facility_rooms.map(fr => fr.facility_id);
+      setSelectedFacilities(facilityIds);
+    } else {
+      setSelectedFacilities([]);
+    }
+    
     setShowModal(true)
   }
 
@@ -223,7 +243,7 @@ export const AdminRooms = () => {
     }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     
     const formDataToSend = new FormData()
@@ -235,15 +255,73 @@ export const AdminRooms = () => {
     formDataToSend.append('description', formData.description)
     formDataToSend.append('status', formData.status)
     
+    // Append facilities untuk room baru
+    selectedFacilities.forEach(facilityId => {
+      formDataToSend.append('facilities[]', facilityId)
+    })
+    
     // Append files
     selectedFiles.forEach(file => {
       formDataToSend.append('photos', file)
     })
     
-    if (editingRoom) {
-      updateRoomMutation.mutate({ id: editingRoom.id, formData: formDataToSend })
-    } else {
-      createRoomMutation.mutate(formDataToSend)
+    try {
+      if (editingRoom) {
+        // Untuk edit room, update dulu roomnya lalu handle facilities
+        await updateRoomMutation.mutateAsync({ id: editingRoom.id, formData: formDataToSend })
+        
+        // Handle facilities untuk room yang diedit
+        if (selectedFacilities.length > 0) {
+          await handleRoomFacilities(editingRoom.id);
+        }
+        
+        // Success handling
+        queryClient.invalidateQueries(['admin-rooms'])
+        setShowModal(false)
+        setEditingRoom(null)
+        resetForm()
+      } else {
+        // Untuk add new room, langsung kirim dengan facilities
+        createRoomMutation.mutate(formDataToSend)
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to save room')
+    }
+  }
+
+  // Function untuk handle room facilities saat edit
+  const handleRoomFacilities = async (roomId) => {
+    try {
+      // Get current facilities untuk room yang diedit
+      let currentFacilities = [];
+      if (editingRoom) {
+        const roomFacilitiesResponse = await roomsAPI.getRoomFacilities(editingRoom.id);
+        currentFacilities = roomFacilitiesResponse.data.map(f => f.id);
+      }
+
+      // Facilities to add
+      const facilitiesToAdd = selectedFacilities.filter(facilityId => 
+        !currentFacilities.includes(facilityId)
+      );
+
+      // Facilities to remove
+      const facilitiesToRemove = currentFacilities.filter(facilityId => 
+        !selectedFacilities.includes(facilityId)
+      );
+
+      // Add new facilities
+      for (const facilityId of facilitiesToAdd) {
+        await addFacilityMutation.mutateAsync({ roomId, facilityId });
+      }
+
+      // Remove facilities yang tidak dipilih
+      for (const facilityId of facilitiesToRemove) {
+        await removeFacilityMutation.mutateAsync({ roomId, facilityId });
+      }
+
+    } catch (error) {
+      console.error('Error handling room facilities:', error);
+      // Tidak throw error di sini karena room sudah berhasil diupdate
     }
   }
 
@@ -538,72 +616,84 @@ export const AdminRooms = () => {
                     )}
                   </div>
 
-                  {/* Facilities Section */}
-                  {editingRoom && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Room Facilities
-                      </label>
-                      <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-3">
-                          <span className="text-sm font-medium">Manage Facilities</span>
-                          <button
-                            type="button"
-                            onClick={() => setShowFacilityModal(true)}
-                            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
-                          >
-                            Add Facility
-                          </button>
-                        </div>
-                        
-                        {/* Current Facilities */}
-                        <div className="mb-3">
+                  {/* Facilities Section - TERSEDIA UNTUK ADD NEW DAN EDIT */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Room Facilities
+                    </label>
+                    <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-sm font-medium">
+                          Select Facilities {selectedFacilities.length > 0 && `(${selectedFacilities.length} selected)`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowFacilityModal(true)}
+                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                        >
+                          Add New Facility
+                        </button>
+                      </div>
+                      
+                      {/* Available Facilities untuk dipilih */}
+                      <div className="mb-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          Available facilities ({facilities?.data?.length || 0}):
+                        </p>
+                        {facilities?.data && facilities.data.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {facilities.data.map((facility) => (
+                              <button
+                                key={facility.id}
+                                type="button"
+                                onClick={() => toggleFacility(facility.id)}
+                                className={`px-3 py-1 rounded-full text-sm transition-colors duration-300 ${
+                                  selectedFacilities.includes(facility.id)
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                                }`}
+                              >
+                                {facility.icon && <span className="mr-1">{facility.icon}</span>}
+                                {facility.name}
+                                {selectedFacilities.includes(facility.id) && (
+                                  <span className="ml-1">✓</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-gray-500 text-sm">No facilities available</p>
+                        )}
+                      </div>
+
+                      {/* Selected Facilities Preview */}
+                      {selectedFacilities.length > 0 && (
+                        <div>
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            Current facilities:
+                            Selected facilities:
                           </p>
-                          {roomFacilities?.data && roomFacilities.data.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {roomFacilities.data.map((facility) => (
+                          <div className="flex flex-wrap gap-2">
+                            {selectedFacilities.map(facilityId => {
+                              const facility = facilities?.data?.find(f => f.id === facilityId);
+                              return facility ? (
                                 <div key={facility.id} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full flex items-center">
+                                  {facility.icon && <span className="mr-1">{facility.icon}</span>}
                                   <span className="text-sm">{facility.name}</span>
                                   <button
                                     type="button"
-                                    onClick={() => handleRemoveFacility(facility.id)}
+                                    onClick={() => toggleFacility(facility.id)}
                                     className="ml-2 text-red-500 hover:text-red-700"
                                   >
                                     ✕
                                   </button>
                                 </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-gray-500 text-sm">No facilities added</p>
-                          )}
-                        </div>
-
-                        {/* Add New Facility */}
-                        <div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            Available facilities:
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {facilities?.data?.filter(facility => 
-                              !roomFacilities?.data?.some(rf => rf.id === facility.id)
-                            ).map((facility) => (
-                              <button
-                                key={facility.id}
-                                type="button"
-                                onClick={() => handleAddFacility(facility.id)}
-                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded-full text-sm transition-colors duration-300"
-                              >
-                                + {facility.name}
-                              </button>
-                            ))}
+                              ) : null;
+                            })}
                           </div>
                         </div>
-                      </div>
+                      )}
                     </div>
-                  )}
+                  </div>
 
                   {/* Photo Upload Section */}
                   <div>
