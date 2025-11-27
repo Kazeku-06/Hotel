@@ -14,6 +14,30 @@ import AdminRooms from '../pages/admin/AdminRooms'
 import AdminBookings from '../pages/admin/AdminBookings'
 import AdminRatings from '../pages/admin/AdminRatings'
 
+// Protected Route untuk member only (mencegah admin mengakses)
+const MemberRoute = ({ children }) => {
+  const { isAuthenticated, isAdmin, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
+  
+  if (isAdmin) {
+    return <Navigate to="/admin" replace />
+  }
+  
+  return children
+}
+
+// Protected Route untuk umum (bisa diakses member dan admin)
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { isAuthenticated, isAdmin, loading } = useAuth()
 
@@ -26,11 +50,11 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" />
+    return <Navigate to="/login" replace />
   }
 
   if (requireAdmin && !isAdmin) {
-    return <Navigate to="/" />
+    return <Navigate to="/" replace />
   }
 
   return children
@@ -48,7 +72,7 @@ const PublicRoute = ({ children }) => {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/" />
+    return <Navigate to="/" replace />
   }
 
   return children
@@ -73,23 +97,23 @@ export const AppRouter = () => {
         </PublicRoute>
       } />
 
-      {/* Member Routes */}
+      {/* Member Only Routes - Admin tidak bisa akses */}
       <Route path="/checkout" element={
-        <ProtectedRoute>
+        <MemberRoute>
           <Checkout />
-        </ProtectedRoute>
+        </MemberRoute>
       } />
       
       <Route path="/my-bookings" element={
-        <ProtectedRoute>
+        <MemberRoute>
           <MemberBookings />
-        </ProtectedRoute>
+        </MemberRoute>
       } />
       
       <Route path="/rate/:bookingId" element={
-        <ProtectedRoute>
+        <MemberRoute>
           <MemberRate />
-        </ProtectedRoute>
+        </MemberRoute>
       } />
 
       {/* Admin Routes */}
@@ -118,7 +142,7 @@ export const AppRouter = () => {
       } />
 
       {/* Catch all route */}
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

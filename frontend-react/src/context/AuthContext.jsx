@@ -103,18 +103,19 @@ export const AuthProvider = ({ children }) => {
   }
 
   // Update isAuthenticated untuk double check dengan localStorage
-  const value = {
-    user,
-    login,
-    register,
-    logout,
-    loading,
-    isAuthenticated: !!user && !!localStorage.getItem('token'),
-    isAdmin: user?.role === 'admin',
-    isMember: user?.role === 'member',
-    canBookRoom: canBookRoom(),
-    isAdminUser: isAdminUser()
-  }
+ // Di dalam AuthProvider
+const value = {
+  user,
+  login,
+  register,
+  logout,
+  loading,
+  isAuthenticated: !!user && !!localStorage.getItem('token'),
+  isAdmin: user?.role === 'admin',  // Pastikan ini ada
+  isMember: user?.role === 'member',
+  canBookRoom: canBookRoom(),
+  isAdminUser: isAdminUser()
+}
 
   return (
     <AuthContext.Provider value={value}>

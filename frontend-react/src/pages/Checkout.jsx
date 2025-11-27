@@ -9,18 +9,25 @@ import { calculateNights } from '../utils/dateUtils'
 export const Checkout = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const room = location.state?.room
 
-  // UPDATE: Validasi room status
+  // UPDATE: Validasi admin dan room status
   useEffect(() => {
+    // Cek jika user adalah admin
+    if (isAdmin) {
+      setError('Admin accounts cannot make bookings. Please use a member account.')
+      return
+    }
+
+    // Cek jika room tidak available
     if (room && room.status !== 'available') {
       setError(`This room is currently ${room.status} and cannot be booked. Please choose another room.`)
     }
-  }, [room])
+  }, [room, isAdmin])
 
   const { register, handleSubmit, formState: { errors }, watch } = useForm({
     defaultValues: {
@@ -45,7 +52,12 @@ export const Checkout = () => {
   const totalPrice = nights * (pricePerNight || 0)
 
   const onSubmit = async (data) => {
-    // UPDATE: Double check room status sebelum submit
+    // UPDATE: Double check admin status dan room status sebelum submit
+    if (isAdmin) {
+      setError('Admin accounts cannot make bookings. Please use a member account.')
+      return
+    }
+
     if (!room) {
       setError('Room information is missing')
       return
@@ -93,8 +105,43 @@ export const Checkout = () => {
     }
   }
 
-  // UPDATE: Disable form jika room tidak available
-  const isFormDisabled = !room || room.status !== 'available'
+  // UPDATE: Disable form jika admin atau room tidak available
+  const isFormDisabled = isAdmin || !room || room.status !== 'available'
+
+  // Tampilkan error page untuk admin
+  if (isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="text-center">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 max-w-md mx-auto">
+              <div className="text-6xl mb-4">🚫</div>
+              <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
+                Access Denied
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Admin accounts cannot make bookings. Please use a member account to book rooms.
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => navigate('/')}
+                  className="w-full bg-gold-500 hover:bg-gold-600 text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300"
+                >
+                  Back to Home
+                </button>
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300"
+                >
+                  Go to Admin Panel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -117,7 +164,7 @@ export const Checkout = () => {
                 </div>
               )}
 
-              {isFormDisabled && (
+              {isFormDisabled && !isAdmin && (
                 <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-600 text-yellow-700 dark:text-yellow-200 px-4 py-3 rounded-lg mb-6">
                   ⚠️ This room is currently {room?.status}. Booking is not available.
                 </div>
@@ -366,6 +413,15 @@ export const Checkout = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Admin Notice */}
+              {isAdmin && (
+                <div className="mt-4 p-3 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-300 text-center">
+                    ⚠️ <strong>Admin Account:</strong> You cannot make bookings with an admin account.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
