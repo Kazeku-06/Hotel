@@ -6,7 +6,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
@@ -28,12 +28,40 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
 
-# FIXED CORS CONFIGURATION - YANG PASTI BEKERJA
+# 🔥 KONFIGURASI CORS YANG LEBIH ROBUST
 CORS(app, 
-     origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-     supports_credentials=True,
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+     resources={
+         r"/api/*": {
+             "origins": ["http://localhost:3000", "http://127.0.0.1:3000"],
+             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+             "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+             "supports_credentials": True,
+             "expose_headers": ["Content-Range", "X-Content-Range"],
+             "max_age": 600
+         }
+     })
+
+# 🔥 GLOBAL CORS HANDLING
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = jsonify({'status': 'preflight'})
+        response.headers.add("Access-Control-Allow-Origin", "http://localhost:3000")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With")
+        response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        return response, 200
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    response.headers.add('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.headers.add('Pragma', 'no-cache')
+    response.headers.add('Expires', '0')
+    return response
 
 # Create upload directory
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -172,10 +200,27 @@ class Rating(db.Model):
 def home():
     return jsonify({'message': 'Hotel API is running!', 'database': 'MySQL with Laragon'})
 
+# 🔥 CORS TEST ENDPOINT
+@app.route('/api/debug/cors-test', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+def cors_test():
+    """Endpoint untuk test CORS"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'message': 'CORS preflight successful'})
+        return response, 200
+    
+    return jsonify({
+        'message': 'CORS test successful',
+        'method': request.method,
+        'headers': dict(request.headers)
+    })
+
 # ==== AUTH ROUTES ====
-@app.route('/api/auth/register', methods=['POST'])
+@app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
 def register():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         data = request.get_json()
         
         # Check if user already exists
@@ -207,9 +252,12 @@ def register():
     except Exception as e:
         return jsonify({'message': str(e)}), 400
 
-@app.route('/api/auth/login', methods=['POST'])
+@app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
 def login():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
@@ -238,10 +286,13 @@ def login():
         return jsonify({'message': str(e)}), 400
 
 # ==== AUTH ME ROUTE ====
-@app.route('/api/auth/me', methods=['GET'])
+@app.route('/api/auth/me', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def get_current_user():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -261,9 +312,12 @@ def get_current_user():
         return jsonify({'message': str(e)}), 500
 
 # ==== FACILITY ROUTES ====
-@app.route('/api/facilities', methods=['GET'])
+@app.route('/api/facilities', methods=['GET', 'OPTIONS'])
 def get_facilities():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         facilities = Facility.query.all()
         result = []
         for facility in facilities:
@@ -277,10 +331,13 @@ def get_facilities():
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 
-@app.route('/api/admin/facilities', methods=['GET', 'POST'])
+@app.route('/api/admin/facilities', methods=['GET', 'POST', 'OPTIONS'])
 @jwt_required()
 def admin_facilities():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -332,10 +389,13 @@ def admin_facilities():
         return jsonify({'message': str(e)}), 400
 
 # Update admin rooms untuk include facilities
-@app.route('/api/admin/rooms/<room_id>/facilities', methods=['GET', 'POST', 'DELETE'])
+@app.route('/api/admin/rooms/<room_id>/facilities', methods=['GET', 'POST', 'DELETE', 'OPTIONS'])
 @jwt_required()
 def room_facilities(room_id):
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -423,9 +483,12 @@ def room_facilities(room_id):
         return jsonify({'message': str(e)}), 400
 
 # ==== ROOM ROUTES ====
-@app.route('/api/rooms', methods=['GET'])
+@app.route('/api/rooms', methods=['GET', 'OPTIONS'])
 def get_rooms():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         # Get filter parameters from request
         room_type_filter = request.args.get('room_type', '').lower()
         min_price = request.args.get('min_price', type=float)
@@ -517,9 +580,12 @@ def get_rooms():
         return jsonify({'message': str(e)}), 500
 
 # ==== Single Room Detail ====
-@app.route('/api/rooms/<room_id>', methods=['GET'])
+@app.route('/api/rooms/<room_id>', methods=['GET', 'OPTIONS'])
 def get_room(room_id):
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         room = Room.query.get(room_id)
         if not room:
             return jsonify({'message': 'Room not found'}), 404
@@ -567,10 +633,13 @@ def get_room(room_id):
         return jsonify({'message': str(e)}), 500
 
 # ==== RATINGS ROUTES ====
-@app.route('/api/ratings', methods=['GET', 'POST'])
+@app.route('/api/ratings', methods=['GET', 'POST', 'OPTIONS'])
 @jwt_required()
 def ratings():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         current_user_id = get_jwt_identity()
         
         if request.method == 'GET':
@@ -659,10 +728,13 @@ def ratings():
         }), 500
 
 # Admin ratings endpoint
-@app.route('/api/admin/ratings', methods=['GET'])
+@app.route('/api/admin/ratings', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def admin_ratings():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -700,10 +772,13 @@ def admin_ratings():
         }), 500
 
 # ==== BOOKINGS ROUTES ====
-@app.route('/api/bookings', methods=['POST'])
+@app.route('/api/bookings', methods=['POST', 'OPTIONS'])
 @jwt_required()
 def create_booking():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         current_user_id = get_jwt_identity()
         data = request.get_json()
         
@@ -803,10 +878,13 @@ def create_booking():
         print(f"❌ Booking error: {str(e)}")
         return jsonify({'message': str(e)}), 400
 
-@app.route('/api/bookings/me', methods=['GET'])
+@app.route('/api/bookings/me', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def get_my_bookings():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         current_user_id = get_jwt_identity()
         
         print(f"🔍 DEBUG - Current user ID: {current_user_id}")
@@ -864,10 +942,13 @@ def get_my_bookings():
         }), 500
 
 # ==== ADMIN BOOKINGS ROUTES ====
-@app.route('/api/admin/bookings', methods=['GET'])
+@app.route('/api/admin/bookings', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def get_all_bookings():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -923,9 +1004,10 @@ def get_all_bookings():
 @jwt_required()
 def update_booking_status(booking_id):
     try:
-        # Handle OPTIONS request for CORS preflight
+        # 🔥 PERBAIKAN CORS YANG LEBIH ROBUST
         if request.method == 'OPTIONS':
-            return jsonify({'message': 'OK'}), 200
+            response = jsonify({'status': 'preflight'})
+            return response, 200
             
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
@@ -1020,10 +1102,13 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@app.route('/api/admin/rooms', methods=['GET', 'POST'])
+@app.route('/api/admin/rooms', methods=['GET', 'POST', 'OPTIONS'])
 @jwt_required()
 def admin_rooms():
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -1155,10 +1240,13 @@ def admin_rooms():
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
-@app.route('/api/admin/rooms/<room_id>', methods=['PUT', 'DELETE'])
+@app.route('/api/admin/rooms/<room_id>', methods=['PUT', 'DELETE', 'OPTIONS'])
 @jwt_required()
 def admin_room_detail(room_id):
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -1247,10 +1335,13 @@ def admin_room_detail(room_id):
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
-@app.route('/api/admin/rooms/<room_id>/photos/<photo_id>', methods=['DELETE'])
+@app.route('/api/admin/rooms/<room_id>/photos/<photo_id>', methods=['DELETE', 'OPTIONS'])
 @jwt_required()
 def delete_room_photo(room_id, photo_id):
     try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -1428,6 +1519,7 @@ if __name__ == '__main__':
     
     print("🚀 Server starting on http://localhost:5000")
     print("✅ CORS Enabled for: http://localhost:3000")
+    print("🔧 CORS Configuration: Multi-layer protection")
     print("💡 Available Endpoints:")
     print("   🔐 AUTH: /api/auth/register, /api/auth/login, /api/auth/me")
     print("   🏨 ROOMS: /api/rooms, /api/rooms/<id>")
@@ -1436,5 +1528,6 @@ if __name__ == '__main__':
     print("   🛠️ FACILITIES: /api/facilities, /api/admin/facilities")
     print("   👑 ADMIN: /api/admin/bookings, /api/admin/rooms")
     print("   🏨 ADMIN ROOM FACILITIES: /api/admin/rooms/<id>/facilities")
+    print("   🐛 DEBUG: /api/debug/cors-test")
     
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, use_reloader=False)
