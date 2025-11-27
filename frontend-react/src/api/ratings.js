@@ -12,4 +12,7 @@ export const ratingsAPI = {
   
   // Get ratings for specific booking
   getBookingRatings: (bookingId) => api.get(`/ratings/booking/${bookingId}`),
+  
+  // NEW: Get all ratings for public view (no auth required)
+  getPublicRatings: () => api.get('/ratings/public'),
 }

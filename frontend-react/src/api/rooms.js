@@ -37,11 +37,11 @@ apiClient.interceptors.response.use(
 );
 
 export const roomsAPI = {
+  // ✅ TAMBAHKAN FUNGSI getRooms YANG HILANG
+  getRooms: (filters = {}) => apiClient.get('/rooms', { params: filters }),
+  
   // Untuk public rooms (tanpa auth) - GET SINGLE ROOM
   getRoom: (id) => apiClient.get(`/rooms/${id}`),
-  
-  // Untuk public rooms (tanpa auth) - GET ALL ROOMS
-  getRooms: () => apiClient.get('/rooms'),
   
   // Untuk admin rooms (dengan auth)
   getAdminRooms: () => apiClient.get('/admin/rooms'),
