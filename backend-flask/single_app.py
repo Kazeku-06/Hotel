@@ -199,6 +199,7 @@ def register():
                 'id': user.id,
                 'name': user.name,
                 'email': user.email,
+                'phone': user.phone,  # ✅ TAMBAHKAN PHONE
                 'role': user.role
             }
         }), 201
@@ -226,6 +227,7 @@ def login():
                     'id': user.id,
                     'name': user.name,
                     'email': user.email,
+                    'phone': user.phone,  # ✅ TAMBAHKAN PHONE DI LOGIN RESPONSE
                     'role': user.role
                 }
             }), 200
@@ -420,7 +422,6 @@ def room_facilities(room_id):
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
-# ==== ROOM ROUTES ====
 # ==== ROOM ROUTES ====
 @app.route('/api/rooms', methods=['GET'])
 def get_rooms():

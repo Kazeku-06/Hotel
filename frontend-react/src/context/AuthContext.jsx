@@ -29,22 +29,25 @@ export const AuthProvider = ({ children }) => {
 
         // Jika ada savedUser, gunakan dulu untuk immediate UI
         if (savedUser) {
-          setUser(JSON.parse(savedUser))
+          const parsedUser = JSON.parse(savedUser)
+          console.log('📋 Saved user from localStorage:', parsedUser)
+          setUser(parsedUser)
         }
 
-        // Always verify token with backend
+        // Always verify token with backend untuk mendapatkan data LENGKAP
         const response = await authAPI.getMe()
-        setUser(response.data)
-        localStorage.setItem('user', JSON.stringify(response.data))
+        const verifiedUser = response.data
+        console.log('✅ Verified user from API:', verifiedUser)
+        
+        // UPDATE: Simpan user lengkap (dengan phone)
+        setUser(verifiedUser)
+        localStorage.setItem('user', JSON.stringify(verifiedUser))
       } catch (error) {
         console.error('Auth check failed:', error)
         
-        // Only logout on specific errors (401 Unauthorized)
         if (error.response?.status === 401) {
           logout()
         }
-        // Untuk error lainnya (network error, server down, dll), biarkan user tetap login
-        // dengan data yang ada di localStorage
       } finally {
         setLoading(false)
       }
@@ -57,6 +60,8 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.login({ email, password })
       const { access_token, user } = response.data
+
+      console.log('🔑 Login successful, user data:', user)
 
       localStorage.setItem('token', access_token)
       localStorage.setItem('user', JSON.stringify(user))
@@ -71,51 +76,21 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
-  const register = async (userData) => {
-    try {
-      const response = await authAPI.register(userData)
-      
-      // Auto login after registration
-      const loginResult = await login(userData.email, userData.password)
-      return loginResult
-    } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Registration failed' 
-      }
-    }
-  }
-
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     setUser(null)
   }
 
-  // PERBAIKAN: Tambahkan fungsi untuk cek apakah user bisa booking
-  const canBookRoom = () => {
-    return !!user && user.role === 'member'
+  const value = {
+    user,
+    login,
+    logout,
+    loading,
+    isAuthenticated: !!user && !!localStorage.getItem('token'),
+    isAdmin: user?.role === 'admin',
+    isMember: user?.role === 'member',
   }
-
-  // PERBAIKAN: Tambahkan fungsi untuk cek apakah user admin
-  const isAdminUser = () => {
-    return !!user && user.role === 'admin'
-  }
-
-  // Update isAuthenticated untuk double check dengan localStorage
- // Di dalam AuthProvider
-const value = {
-  user,
-  login,
-  register,
-  logout,
-  loading,
-  isAuthenticated: !!user && !!localStorage.getItem('token'),
-  isAdmin: user?.role === 'admin',  // Pastikan ini ada
-  isMember: user?.role === 'member',
-  canBookRoom: canBookRoom(),
-  isAdminUser: isAdminUser()
-}
 
   return (
     <AuthContext.Provider value={value}>

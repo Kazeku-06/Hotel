@@ -9,50 +9,36 @@ import { calculateNights } from '../utils/dateUtils'
 export const Checkout = () => {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const room = location.state?.room
 
-  // UPDATE: Validasi admin dan room status
+  const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm()
+
+  // SOLUSI: Set form values ketika user data tersedia
   useEffect(() => {
-    // Cek jika user adalah admin
-    if (isAdmin) {
-      setError('Admin accounts cannot make bookings. Please use a member account.')
-      return
+    if (!authLoading && user) {
+      console.log('🔄 Setting form values with user:', user)
+      setValue('guest_name', user?.name || '')
+      setValue('phone', user?.phone || '')
     }
-
-    // Cek jika room tidak available
-    if (room && room.status !== 'available') {
-      setError(`This room is currently ${room.status} and cannot be booked. Please choose another room.`)
-    }
-  }, [room, isAdmin])
-
-  const { register, handleSubmit, formState: { errors }, watch } = useForm({
-    defaultValues: {
-      guest_name: user?.name || '',
-      phone: user?.phone || '',
-      nik: '',
-      check_in: '',
-      check_out: '',
-      total_guests: room?.capacity || 1,
-      payment_method: 'credit_card',
-      breakfast_option: 'without'
-    }
-  })
+  }, [user, authLoading, setValue])
 
   const checkIn = watch('check_in')
   const checkOut = watch('check_out')
   const totalGuests = watch('total_guests')
   const breakfastOption = watch('breakfast_option')
+  const guestName = watch('guest_name')
+  const phone = watch('phone')
 
   const nights = checkIn && checkOut ? calculateNights(checkIn, checkOut) : 0
   const pricePerNight = breakfastOption === 'with' ? room?.price_with_breakfast : room?.price_no_breakfast
   const totalPrice = nights * (pricePerNight || 0)
 
   const onSubmit = async (data) => {
-    // UPDATE: Double check admin status dan room status sebelum submit
+    // Double check admin status dan room status sebelum submit
     if (isAdmin) {
       setError('Admin accounts cannot make bookings. Please use a member account.')
       return
@@ -105,8 +91,17 @@ export const Checkout = () => {
     }
   }
 
-  // UPDATE: Disable form jika admin atau room tidak available
-  const isFormDisabled = isAdmin || !room || room.status !== 'available'
+  // Disable form jika admin atau room tidak available atau masih loading auth
+  const isFormDisabled = isAdmin || !room || room.status !== 'available' || authLoading
+
+  // Tampilkan loading selama auth masih loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+      </div>
+    )
+  }
 
   // Tampilkan error page untuk admin
   if (isAdmin) {
@@ -157,7 +152,6 @@ export const Checkout = () => {
               <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-6">
                 Booking Information
               </h2>
-
               {error && (
                 <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg mb-6">
                   {error}
@@ -181,6 +175,7 @@ export const Checkout = () => {
                       type="text"
                       disabled={isFormDisabled}
                       className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300 disabled:bg-gray-100 disabled:text-gray-500"
+                      placeholder="Enter guest name"
                     />
                     {errors.guest_name && (
                       <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.guest_name.message}</p>
@@ -219,6 +214,7 @@ export const Checkout = () => {
                     type="tel"
                     disabled={isFormDisabled}
                     className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300 disabled:bg-gray-100 disabled:text-gray-500"
+                    placeholder="Enter phone number"
                   />
                   {errors.phone && (
                     <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.phone.message}</p>
@@ -359,7 +355,7 @@ export const Checkout = () => {
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       Capacity: {room.capacity} people
                     </p>
-                    {/* UPDATE: Tampilkan status room */}
+                    {/* Tampilkan status room */}
                     <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${
                       room.status === 'available' ? 'bg-green-100 text-green-800' :
                       room.status === 'booked' ? 'bg-blue-100 text-blue-800' :
