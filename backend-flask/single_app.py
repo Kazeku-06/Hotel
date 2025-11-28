@@ -388,6 +388,112 @@ def admin_facilities():
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
+# ==== ROOM TYPE ROUTES ==== 
+@app.route('/api/room-types', methods=['GET', 'OPTIONS'])
+def room_types():
+    try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
+        # GET tidak perlu auth untuk public access
+        room_types = RoomType.query.all()
+        result = []
+        for room_type in room_types:
+            result.append({
+                'id': room_type.id,
+                'name': room_type.name,
+                'description': room_type.description,
+                'created_at': room_type.created_at.isoformat() if room_type.created_at else None
+            })
+        return jsonify({
+            'success': True,
+            'data': result,
+            'count': len(result)
+        }), 200
+
+    except Exception as e:
+        print(f"❌ ERROR in room_types: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
+# ==== ADMIN ROOM TYPES ROUTES ====
+@app.route('/api/admin/room-types', methods=['GET', 'POST', 'OPTIONS'])
+@jwt_required()
+def admin_room_types():
+    """Admin endpoint untuk manage room types"""
+    try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        # Check if user is admin
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        if request.method == 'GET':
+            # GET room types untuk admin (bisa dengan lebih banyak data)
+            room_types = RoomType.query.all()
+            result = []
+            for room_type in room_types:
+                result.append({
+                    'id': room_type.id,
+                    'name': room_type.name,
+                    'description': room_type.description,
+                    'created_at': room_type.created_at.isoformat() if room_type.created_at else None,
+                    'room_count': len(room_type.rooms)  # Tambah info jumlah room
+                })
+            return jsonify({
+                'success': True,
+                'data': result,
+                'count': len(result)
+            }), 200
+
+        elif request.method == 'POST':
+            data = request.get_json()
+            
+            if not data or not data.get('name'):
+                return jsonify({
+                    'success': False,
+                    'message': 'Room type name is required'
+                }), 400
+
+            # Check if room type already exists
+            if RoomType.query.filter_by(name=data.get('name')).first():
+                return jsonify({
+                    'success': False,
+                    'message': 'Room type already exists'
+                }), 400
+
+            room_type = RoomType(
+                name=data.get('name'),
+                description=data.get('description', '')
+            )
+            
+            db.session.add(room_type)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Room type created successfully',
+                'data': {
+                    'id': room_type.id,
+                    'name': room_type.name,
+                    'description': room_type.description
+                }
+            }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ ERROR in admin_room_types: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 400
+
 # Update admin rooms untuk include facilities
 @app.route('/api/admin/rooms/<room_id>/facilities', methods=['GET', 'POST', 'DELETE', 'OPTIONS'])
 @jwt_required()
@@ -1528,6 +1634,8 @@ if __name__ == '__main__':
     print("   🛠️ FACILITIES: /api/facilities, /api/admin/facilities")
     print("   👑 ADMIN: /api/admin/bookings, /api/admin/rooms")
     print("   🏨 ADMIN ROOM FACILITIES: /api/admin/rooms/<id>/facilities")
+    print("   🏠 ROOM TYPES: /api/room-types (GET public)")
+    print("   🏠 ADMIN ROOM TYPES: /api/admin/room-types (GET/POST admin only)")
     print("   🐛 DEBUG: /api/debug/cors-test")
     
     app.run(debug=True, port=5000, use_reloader=False)
