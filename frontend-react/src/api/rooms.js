@@ -38,24 +38,38 @@ apiClient.interceptors.response.use(
 
 // Room Types API
 export const roomTypesAPI = {
-  // Get all room types - PUBLIC
+  // Get all room types - PUBLIC (untuk customer)
   getRoomTypes: () => {
     return apiClient.get('/room-types')
   },
 
-  // Create new room type - ADMIN ONLY
+  // Create new room type - ADMIN ONLY (gunakan endpoint admin seperti fasilitas)
   createRoomType: (data) => {
     const token = localStorage.getItem('token');
-    console.log('🔐 DEBUG - Token for room type creation:', token ? 'Present' : 'Missing');
+    console.log('🔐 DEBUG - Creating room type with admin endpoint');
     
     if (!token) {
       return Promise.reject(new Error('No authentication token found. Please log in.'));
     }
 
-    // 🔥 PERBAIKAN: Gunakan endpoint yang benar - /room-types (bukan /admin/room-types)
-    return apiClient.post('/room-types', data, {
+    // Gunakan endpoint admin seperti fasilitas
+    return apiClient.post('/admin/room-types', data, {
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    })
+  },
+
+  // Get room types untuk admin (bisa dengan lebih banyak data)
+  getAdminRoomTypes: () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return Promise.reject(new Error('No authentication token found.'));
+    }
+
+    return apiClient.get('/admin/room-types', {
+      headers: {
         'Authorization': `Bearer ${token}`
       }
     })
@@ -113,6 +127,7 @@ export const roomsAPI = {
   // Room Types API
   getRoomTypes: roomTypesAPI.getRoomTypes,
   createRoomType: roomTypesAPI.createRoomType,
+  getAdminRoomTypes: roomTypesAPI.getAdminRoomTypes,
 
   // Facilities API
   getFacilities: () => apiClient.get('/facilities'),
