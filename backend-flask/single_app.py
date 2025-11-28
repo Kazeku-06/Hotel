@@ -214,6 +214,63 @@ def cors_test():
         'headers': dict(request.headers)
     })
 
+# ==== DASHBOARD STATS ROUTE ====
+@app.route('/api/admin/dashboard/stats', methods=['GET', 'OPTIONS'])
+@jwt_required()
+def get_dashboard_stats():
+    try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        # Check if user is admin
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        # Total Rooms
+        total_rooms = db.session.query(db.func.count(Room.id)).scalar() or 0
+
+        # Active Bookings (confirmed + checked_in)
+        active_bookings = db.session.query(db.func.count(Booking.id)).filter(
+            Booking.status.in_(['confirmed', 'checked_in'])
+        ).scalar() or 0
+
+        # User Reviews (total ratings)
+        user_reviews = db.session.query(db.func.count(Rating.id)).scalar() or 0
+
+        # Revenue (total dari bookings yang completed/checked_out)
+        revenue_result = db.session.query(db.func.sum(Booking.total_price)).filter(
+            Booking.status.in_(['checked_out', 'confirmed', 'checked_in'])
+        ).scalar() or 0
+        
+        # Format revenue ke Rupiah
+        if revenue_result:
+            revenue_formatted = f"Rp {revenue_result:,.0f}".replace(',', '.')
+        else:
+            revenue_formatted = "Rp 0"
+
+        stats = {
+            'total_rooms': total_rooms,
+            'active_bookings': active_bookings,
+            'user_reviews': user_reviews,
+            'revenue': revenue_formatted,
+            'revenue_raw': float(revenue_result)
+        }
+
+        return jsonify({
+            'success': True,
+            'data': stats
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ ERROR in get_dashboard_stats: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
 # ==== AUTH ROUTES ====
 @app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
 def register():
@@ -244,7 +301,7 @@ def register():
                 'id': user.id,
                 'name': user.name,
                 'email': user.email,
-                'phone': user.phone,  # ✅ TAMBAHKAN PHONE
+                'phone': user.phone,
                 'role': user.role
             }
         }), 201
@@ -275,7 +332,7 @@ def login():
                     'id': user.id,
                     'name': user.name,
                     'email': user.email,
-                    'phone': user.phone,  # ✅ TAMBAHKAN PHONE DI LOGIN RESPONSE
+                    'phone': user.phone,
                     'role': user.role
                 }
             }), 200
@@ -444,7 +501,7 @@ def admin_room_types():
                     'name': room_type.name,
                     'description': room_type.description,
                     'created_at': room_type.created_at.isoformat() if room_type.created_at else None,
-                    'room_count': len(room_type.rooms)  # Tambah info jumlah room
+                    'room_count': len(room_type.rooms)
                 })
             return jsonify({
                 'success': True,
@@ -1481,7 +1538,7 @@ def admin_room_detail(room_id):
                         db.session.add(room_facility)
                         print(f"✅ [{i+1}] Added facility {facility.name} ({facility_id}) to room {room.room_number}")
                     else:
-                        print(f"⚠️ Facility with ID {facility_id} not found in database")
+                        print(f"⚠️ Facility with ID {facility_id} not found")
             else:
                 print("ℹ️ No facilities provided, all facilities removed")
             
@@ -1730,6 +1787,7 @@ if __name__ == '__main__':
     print("🔧 CORS Configuration: Multi-layer protection")
     print("💡 Available Endpoints:")
     print("   🔐 AUTH: /api/auth/register, /api/auth/login, /api/auth/me")
+    print("   📊 DASHBOARD: /api/admin/dashboard/stats")
     print("   🏨 ROOMS: /api/rooms, /api/rooms/<id>")
     print("   📖 BOOKINGS: /api/bookings, /api/bookings/me")
     print("   ⭐ RATINGS: /api/ratings, /api/admin/ratings")
