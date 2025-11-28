@@ -284,123 +284,6 @@ def get_dashboard_stats():
             'message': str(e)
         }), 500
 
-# ==== DASHBOARD CHARTS ROUTES ====
-@app.route('/api/admin/dashboard/charts', methods=['GET', 'OPTIONS'])
-@jwt_required()
-def get_dashboard_charts():
-    """Endpoint untuk dashboard charts data"""
-    try:
-        if request.method == 'OPTIONS':
-            return jsonify({'message': 'OK'}), 200
-            
-        current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
-        
-        # Check if user is admin
-        if not user or user.role != 'admin':
-            return jsonify({'message': 'Admin access required'}), 403
-
-        # Data untuk grafik pemesanan 7 hari terakhir
-        seven_days_ago = datetime.now().date() - timedelta(days=7)
-        
-        print(f"🔍 Fetching chart data from {seven_days_ago} to today")
-        
-        # Query untuk booking per hari
-        daily_bookings = db.session.query(
-            db.func.date(Booking.created_at).label('date'),
-            db.func.count(Booking.id).label('bookings')
-        ).filter(
-            Booking.created_at >= seven_days_ago
-        ).group_by(
-            db.func.date(Booking.created_at)
-        ).order_by('date').all()
-
-        print(f"📊 Found {len(daily_bookings)} days with bookings")
-
-        # Format data untuk chart - pastikan ada data untuk semua 7 hari
-        booking_chart_data = []
-        day_names = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
-        
-        for i in range(7):
-            current_date = (datetime.now().date() - timedelta(days=6-i))
-            date_str = current_date.strftime('%Y-%m-%d')
-            day_name = day_names[current_date.weekday()]
-            
-            # Cari data untuk tanggal ini
-            booking_count = 0
-            for booking in daily_bookings:
-                if booking.date == current_date:
-                    booking_count = booking.bookings
-                    break
-            
-            booking_chart_data.append({
-                'day': day_name,
-                'date': date_str,
-                'bookings': booking_count
-            })
-
-        print(f"📈 Chart data prepared: {booking_chart_data}")
-
-        # Data untuk tipe kamar terpopuler
-        room_type_stats = db.session.query(
-            RoomType.name,
-            db.func.count(BookingRoom.id).label('bookings')
-        ).join(
-            Room, RoomType.id == Room.room_type_id
-        ).join(
-            BookingRoom, Room.id == BookingRoom.room_id
-        ).join(
-            Booking, BookingRoom.booking_id == Booking.id
-        ).filter(
-            Booking.created_at >= seven_days_ago
-        ).group_by(
-            RoomType.name
-        ).order_by(db.desc('bookings')).all()
-
-        room_type_data = []
-        for stat in room_type_stats:
-            room_type_data.append({
-                'type': stat.name,
-                'bookings': stat.bookings
-            })
-
-        print(f"🏨 Room type stats: {room_type_data}")
-
-        # Data untuk status booking
-        booking_status_stats = db.session.query(
-            Booking.status,
-            db.func.count(Booking.id).label('count')
-        ).group_by(Booking.status).all()
-
-        status_data = []
-        for stat in booking_status_stats:
-            status_data.append({
-                'status': stat.status,
-                'count': stat.count
-            })
-
-        print(f"📋 Status stats: {status_data}")
-
-        charts_data = {
-            'booking_trends': booking_chart_data,
-            'popular_room_types': room_type_data,
-            'booking_status': status_data
-        }
-
-        return jsonify({
-            'success': True,
-            'data': charts_data
-        }), 200
-        
-    except Exception as e:
-        print(f"❌ ERROR in get_dashboard_charts: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
-
 @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
 def login():
     try:
@@ -982,7 +865,7 @@ def ratings():
             'message': str(e)
         }), 500
 
-# Admin ratings endpoint
+# Admin ratings endpoint - PERBAIKAN: ganti status code 500 menjadi 200
 @app.route('/api/admin/ratings', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def admin_ratings():
@@ -1018,7 +901,7 @@ def admin_ratings():
             'success': True,
             'data': result,
             'count': len(result)
-        }), 200
+        }), 200  # PERBAIKAN: ganti dari 500 menjadi 200
         
     except Exception as e:
         return jsonify({
@@ -1879,7 +1762,7 @@ if __name__ == '__main__':
     print("🔧 CORS Configuration: Multi-layer protection")
     print("💡 Available Endpoints:")
     print("   🔐 AUTH: /api/auth/register, /api/auth/login, /api/auth/me")
-    print("   📊 DASHBOARD: /api/admin/dashboard/stats, /api/admin/dashboard/charts")
+    print("   📊 DASHBOARD: /api/admin/dashboard/stats")  # ✅ HANYA STATS SAJA
     print("   🏨 ROOMS: /api/rooms, /api/rooms/<id>")
     print("   📖 BOOKINGS: /api/bookings, /api/bookings/me")
     print("   ⭐ RATINGS: /api/ratings, /api/admin/ratings")
