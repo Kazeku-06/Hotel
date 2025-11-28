@@ -620,60 +620,26 @@ def room_facilities(room_id):
         db.session.rollback()
         return jsonify({'message': str(e)}), 400
 
-# ==== ROOM ROUTES ====
-@app.route('/api/rooms', methods=['GET', 'OPTIONS'])
-def get_rooms():
+# ==== SEARCH ROOMS BY NUMBER ROUTE ====
+@app.route('/api/rooms/search', methods=['GET', 'OPTIONS'])
+def search_rooms_by_number():
+    """Endpoint khusus untuk search by room number"""
     try:
         if request.method == 'OPTIONS':
             return jsonify({'message': 'OK'}), 200
             
-        # Get filter parameters from request
-        room_type_filter = request.args.get('room_type', '').lower()
-        min_price = request.args.get('min_price', type=float)
-        max_price = request.args.get('max_price', type=float)
-        capacity_filter = request.args.get('capacity', type=int)
+        room_number = request.args.get('room_number', '').strip()
         
-        # PERBAIKAN: Handle facilities array dengan benar
-        facilities_filter = request.args.getlist('facilities[]')
-        # Fallback untuk format lain
-        if not facilities_filter:
-            facilities_filter = request.args.getlist('facilities')
+        if not room_number:
+            return jsonify({'message': 'Room number parameter is required'}), 400
         
-        print(f"🔍 DEBUG FILTER - room_type: {room_type_filter}, min_price: {min_price}, max_price: {max_price}, capacity: {capacity_filter}")
-        print(f"🔍 DEBUG FACILITIES FILTER: {facilities_filter}")
-        print(f"🔍 DEBUG ALL ARGS: {request.args}")
+        print(f"🔍 SEARCHING ROOMS BY NUMBER: {room_number}")
         
-        # Start with base query
-        query = Room.query.filter(Room.status == 'available')
-        
-        # Filter by room type - PERBAIKAN: case insensitive exact match
-        if room_type_filter:
-            query = query.join(RoomType).filter(db.func.lower(RoomType.name) == room_type_filter)
-        
-        # Filter by price range
-        if min_price is not None:
-            query = query.filter(Room.price_no_breakfast >= min_price)
-        if max_price is not None:
-            query = query.filter(Room.price_no_breakfast <= max_price)
-        
-        # Filter by capacity
-        if capacity_filter:
-            query = query.filter(Room.capacity >= capacity_filter)
-        
-        # Filter by facilities - PERBAIKAN: gunakan subquery untuk multiple facilities
-        if facilities_filter:
-            # Cari room yang memiliki SEMUA facilities yang dipilih
-            subquery = db.session.query(FacilityRoom.room_id).filter(
-                FacilityRoom.facility_id.in_(facilities_filter)
-            ).group_by(FacilityRoom.room_id).having(
-                db.func.count(FacilityRoom.facility_id) == len(facilities_filter)
-            ).subquery()
-            
-            query = query.join(subquery, Room.id == subquery.c.room_id)
-        
-        rooms = query.all()
-        
-        print(f"🔍 DEBUG - Found {len(rooms)} rooms after filtering")
+        # Search rooms by room number (case insensitive partial match)
+        rooms = Room.query.filter(
+            Room.room_number.ilike(f'%{room_number}%'),
+            Room.status == 'available'
+        ).all()
         
         result = []
         for room in rooms:
@@ -710,7 +676,228 @@ def get_rooms():
                     'name': room.room_type.name
                 } if room.room_type else None
             })
+        
+        return jsonify({
+            'success': True,
+            'data': result,
+            'count': len(result),
+            'search_term': room_number
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ ERROR in search_rooms_by_number: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+# ==== GET ROOM BY EXACT NUMBER ROUTE ====
+@app.route('/api/rooms/number/<room_number>', methods=['GET', 'OPTIONS'])
+def get_room_by_number(room_number):
+    """Endpoint untuk mendapatkan room berdasarkan nomor kamar (exact match)"""
+    try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
+        if not room_number:
+            return jsonify({'message': 'Room number is required'}), 400
+        
+        print(f"🔍 GETTING ROOM BY EXACT NUMBER: {room_number}")
+        
+        # Find room by exact room number
+        room = Room.query.filter(
+            Room.room_number == room_number,
+            Room.status == 'available'
+        ).first()
+        
+        if not room:
+            return jsonify({
+                'success': False,
+                'message': f'Room with number {room_number} not found or not available'
+            }), 404
+        
+        # Get room photos
+        photos = []
+        for photo in room.photos:
+            photos.append({
+                'id': photo.id,
+                'photo_path': f"/{photo.photo_path}",
+                'is_primary': getattr(photo, 'is_primary', False)
+            })
+        
+        # Get room facilities
+        facilities = []
+        for fr in room.facility_rooms:
+            facilities.append({
+                'id': fr.facility.id,
+                'name': fr.facility.name,
+                'icon': fr.facility.icon
+            })
+        
+        result = {
+            'id': room.id,
+            'room_number': room.room_number,
+            'room_type_id': room.room_type_id,
+            'room_type': {
+                'id': room.room_type.id,
+                'name': room.room_type.name,
+                'description': room.room_type.description
+            } if room.room_type else None,
+            'capacity': room.capacity,
+            'price_no_breakfast': room.price_no_breakfast,
+            'price_with_breakfast': room.price_with_breakfast,
+            'status': room.status,
+            'description': room.description,
+            'photos': photos,
+            'facilities': facilities,
+            'created_at': room.created_at.isoformat() if room.created_at else None
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ ERROR in get_room_by_number: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+# ==== ROOM ROUTES ====
+@app.route('/api/rooms', methods=['GET', 'OPTIONS'])
+def get_rooms():
+    try:
+        if request.method == 'OPTIONS':
+            return jsonify({'message': 'OK'}), 200
+            
+        # Get filter parameters from request
+        room_type_filter = request.args.get('room_type', '').strip()
+        min_price = request.args.get('min_price', type=float)
+        max_price = request.args.get('max_price', type=float)
+        capacity_filter = request.args.get('capacity', type=int)
+        
+        # PERBAIKAN: Handle facilities array dengan benar
+        facilities_filter = request.args.getlist('facilities[]')
+        # Fallback untuk format lain
+        if not facilities_filter:
+            facilities_filter = request.args.getlist('facilities')
+        
+        # NEW: Search by room number
+        room_number_search = request.args.get('room_number', '').strip()
+        search_query = request.args.get('search', '').strip()
+        
+        print(f"🔍 DEBUG FILTER - room_type: '{room_type_filter}', min_price: {min_price}, max_price: {max_price}, capacity: {capacity_filter}")
+        print(f"🔍 DEBUG ROOM NUMBER SEARCH: '{room_number_search}'")
+        print(f"🔍 DEBUG SEARCH QUERY: '{search_query}'")
+        print(f"🔍 DEBUG FACILITIES FILTER: {facilities_filter}")
+        print(f"🔍 DEBUG ALL ARGS: {dict(request.args)}")
+        
+        # Start with base query
+        query = Room.query.filter(Room.status == 'available')
+        
+        # DEBUG: Log semua room yang available sebelum filter
+        all_available_rooms = Room.query.filter(Room.status == 'available').all()
+        print(f"🔍 ALL AVAILABLE ROOMS BEFORE FILTERING: {[room.room_number for room in all_available_rooms]}")
+        
+        # NEW: Filter by room number (case insensitive partial match)
+        if room_number_search:
+            print(f"🔍 APPLYING ROOM NUMBER FILTER: '{room_number_search}'")
+            # Gunakan ilike untuk case-insensitive partial matching
+            query = query.filter(Room.room_number.ilike(f'%{room_number_search}%'))
+            
+            # DEBUG: Test the filter
+            test_result = query.all()
+            print(f"🔍 ROOMS AFTER ROOM NUMBER FILTER: {[room.room_number for room in test_result]}")
+        
+        # NEW: General search (bisa search room number atau description)
+        if search_query:
+            query = query.filter(
+                db.or_(
+                    Room.room_number.ilike(f'%{search_query}%'),
+                    Room.description.ilike(f'%{search_query}%')
+                )
+            )
+            print(f"🔍 Applied general search: %{search_query}%")
+        
+        # PERBAIKAN: Filter by room type - case insensitive partial match
+        if room_type_filter:
+            # Gunakan join dengan RoomType dan filter dengan ilike untuk partial match
+            query = query.join(RoomType).filter(RoomType.name.ilike(f'%{room_type_filter}%'))
+            print(f"🔍 Applied room_type filter: %{room_type_filter}%")
+        
+        # Filter by price range
+        if min_price is not None:
+            query = query.filter(Room.price_no_breakfast >= min_price)
+            print(f"🔍 Applied min_price filter: {min_price}")
+        
+        if max_price is not None:
+            query = query.filter(Room.price_no_breakfast <= max_price)
+            print(f"🔍 Applied max_price filter: {max_price}")
+        
+        # Filter by capacity
+        if capacity_filter:
+            query = query.filter(Room.capacity >= capacity_filter)
+            print(f"🔍 Applied capacity filter: {capacity_filter}")
+        
+        # Filter by facilities - PERBAIKAN: gunakan subquery untuk multiple facilities
+        if facilities_filter:
+            # Cari room yang memiliki SEMUA facilities yang dipilih
+            subquery = db.session.query(FacilityRoom.room_id).filter(
+                FacilityRoom.facility_id.in_(facilities_filter)
+            ).group_by(FacilityRoom.room_id).having(
+                db.func.count(FacilityRoom.facility_id) == len(facilities_filter)
+            ).subquery()
+            
+            query = query.join(subquery, Room.id == subquery.c.room_id)
+            print(f"🔍 Applied facilities filter: {facilities_filter}")
+        
+        # Execute query
+        rooms = query.all()
+        
+        print(f"🔍 DEBUG - Found {len(rooms)} rooms after filtering")
+        print(f"🔍 FINAL ROOMS: {[room.room_number for room in rooms]}")
+        
+        result = []
+        for room in rooms:
+            # Get primary photo if exists
+            primary_photo = None
+            for photo in room.photos:
+                if photo.is_primary:
+                    primary_photo = f"/{photo.photo_path}"
+                    break
+            if not primary_photo and room.photos:
+                primary_photo = f"/{room.photos[0].photo_path}"
+                
+            # Get room facilities
+            facilities = []
+            for fr in room.facility_rooms:
+                facilities.append({
+                    'id': fr.facility.id,
+                    'name': fr.facility.name,
+                    'icon': fr.facility.icon
+                })
+                
+            result.append({
+                'id': room.id,
+                'room_number': room.room_number,
+                'capacity': room.capacity,
+                'price_no_breakfast': room.price_no_breakfast,
+                'price_with_breakfast': room.price_with_breakfast,
+                'status': room.status,
+                'description': room.description,
+                'primary_photo': primary_photo,
+                'facility_rooms': facilities,
+                'room_type': {
+                    'id': room.room_type.id,
+                    'name': room.room_type.name
+                } if room.room_type else None
+            })
+        
+        print(f"🔍 DEBUG - Returning {len(result)} rooms")
         return jsonify(result), 200
+        
     except Exception as e:
         print(f"❌ ERROR in get_rooms: {str(e)}")
         import traceback
@@ -1762,8 +1949,10 @@ if __name__ == '__main__':
     print("🔧 CORS Configuration: Multi-layer protection")
     print("💡 Available Endpoints:")
     print("   🔐 AUTH: /api/auth/register, /api/auth/login, /api/auth/me")
-    print("   📊 DASHBOARD: /api/admin/dashboard/stats")  # ✅ HANYA STATS SAJA
+    print("   📊 DASHBOARD: /api/admin/dashboard/stats")
     print("   🏨 ROOMS: /api/rooms, /api/rooms/<id>")
+    print("   🔍 SEARCH: /api/rooms/search?room_number=XXX (NEW)")
+    print("   🔍 SEARCH: /api/rooms/number/XXX (NEW - exact match)")
     print("   📖 BOOKINGS: /api/bookings, /api/bookings/me")
     print("   ⭐ RATINGS: /api/ratings, /api/admin/ratings")
     print("   🛠️ FACILITIES: /api/facilities, /api/admin/facilities")

@@ -96,6 +96,7 @@ export const roomsAPI = {
     
     // NEW: Add search and pagination parameters
     if (filters.search) params.search = filters.search;
+    if (filters.room_number) params.room_number = filters.room_number; // NEW: Search by room number
     if (filters.page) params.page = filters.page;
     if (filters.limit) params.limit = filters.limit;
     
@@ -104,7 +105,23 @@ export const roomsAPI = {
     return apiClient.get('/rooms', { params });
   },
   
+  // NEW: Search rooms by room number specifically
+  searchRoomsByNumber: (roomNumber) => {
+    console.log('🔍 SEARCHING ROOM BY NUMBER:', roomNumber);
+    
+    return apiClient.get('/rooms', {
+      params: {
+        room_number: roomNumber
+      }
+    });
+  },
+  
   getRoom: (id) => apiClient.get(`/rooms/${id}`),
+  
+  // NEW: Get room by room number (alternative endpoint jika ada)
+  getRoomByNumber: (roomNumber) => {
+    return apiClient.get(`/rooms/number/${roomNumber}`);
+  },
   
   // Admin endpoints (require auth)
   getAdminRooms: () => apiClient.get('/admin/rooms'),
@@ -150,4 +167,4 @@ export const facilitiesAPI = {
   getFacilities: () => apiClient.get('/facilities'),
   getAdminFacilities: () => apiClient.get('/admin/facilities'),
   createFacility: (data) => apiClient.post('/admin/facilities', data),
-};  
+};
