@@ -10,6 +10,7 @@ from flask_cors import CORS, cross_origin
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -57,7 +58,7 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', 'http://localhost:3000')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With')
     response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    response.headers.add('Access-Control-Allow-Credentials', "true")
     response.headers.add('Cache-Control', 'no-cache, no-store, must-revalidate')
     response.headers.add('Pragma', 'no-cache')
     response.headers.add('Expires', '0')
@@ -214,10 +215,11 @@ def cors_test():
         'headers': dict(request.headers)
     })
 
-# ==== DASHBOARD STATS ROUTE ====
+# ==== DASHBOARD STATS ROUTES ====
 @app.route('/api/admin/dashboard/stats', methods=['GET', 'OPTIONS'])
 @jwt_required()
 def get_dashboard_stats():
+    """Endpoint untuk dashboard statistics"""
     try:
         if request.method == 'OPTIONS':
             return jsonify({'message': 'OK'}), 200
@@ -229,39 +231,50 @@ def get_dashboard_stats():
         if not user or user.role != 'admin':
             return jsonify({'message': 'Admin access required'}), 403
 
-        # Total Rooms
-        total_rooms = db.session.query(db.func.count(Room.id)).scalar() or 0
-
-        # Active Bookings (confirmed + checked_in)
-        active_bookings = db.session.query(db.func.count(Booking.id)).filter(
-            Booking.status.in_(['confirmed', 'checked_in'])
-        ).scalar() or 0
-
-        # User Reviews (total ratings)
-        user_reviews = db.session.query(db.func.count(Rating.id)).scalar() or 0
-
-        # Revenue (total dari bookings yang completed/checked_out)
-        revenue_result = db.session.query(db.func.sum(Booking.total_price)).filter(
-            Booking.status.in_(['checked_out', 'confirmed', 'checked_in'])
-        ).scalar() or 0
+        # Total bookings
+        total_bookings = Booking.query.count()
         
-        # Format revenue ke Rupiah
-        if revenue_result:
-            revenue_formatted = f"Rp {revenue_result:,.0f}".replace(',', '.')
-        else:
-            revenue_formatted = "Rp 0"
+        # Total rooms
+        total_rooms = Room.query.count()
+        
+        # Available rooms
+        available_rooms = Room.query.filter_by(status='available').count()
+        
+        # Total revenue (hitung dari booking yang completed/checked_out)
+        revenue_result = db.session.query(db.func.sum(Booking.total_price)).filter(
+            Booking.status.in_(['checked_out', 'confirmed'])
+        ).scalar()
+        total_revenue = float(revenue_result) if revenue_result else 0.0
+        
+        # Pending bookings
+        pending_bookings = Booking.query.filter_by(status='pending').count()
+        
+        # Today's check-ins
+        today = datetime.now().date()
+        today_checkins = Booking.query.filter(
+            Booking.check_in == today,
+            Booking.status.in_(['confirmed', 'checked_in'])
+        ).count()
+        
+        # Today's check-outs
+        today_checkouts = Booking.query.filter(
+            Booking.check_out == today,
+            Booking.status.in_(['checked_in', 'checked_out'])
+        ).count()
 
-        stats = {
+        stats_data = {
+            'total_bookings': total_bookings,
             'total_rooms': total_rooms,
-            'active_bookings': active_bookings,
-            'user_reviews': user_reviews,
-            'revenue': revenue_formatted,
-            'revenue_raw': float(revenue_result)
+            'available_rooms': available_rooms,
+            'total_revenue': total_revenue,
+            'pending_bookings': pending_bookings,
+            'today_checkins': today_checkins,
+            'today_checkouts': today_checkouts
         }
 
         return jsonify({
             'success': True,
-            'data': stats
+            'data': stats_data
         }), 200
         
     except Exception as e:
@@ -271,43 +284,122 @@ def get_dashboard_stats():
             'message': str(e)
         }), 500
 
-# ==== AUTH ROUTES ====
-@app.route('/api/auth/register', methods=['POST', 'OPTIONS'])
-def register():
+# ==== DASHBOARD CHARTS ROUTES ====
+@app.route('/api/admin/dashboard/charts', methods=['GET', 'OPTIONS'])
+@jwt_required()
+def get_dashboard_charts():
+    """Endpoint untuk dashboard charts data"""
     try:
         if request.method == 'OPTIONS':
             return jsonify({'message': 'OK'}), 200
             
-        data = request.get_json()
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
         
-        # Check if user already exists
-        if User.query.filter_by(email=data.get('email')).first():
-            return jsonify({'message': 'Email already registered'}), 400
+        # Check if user is admin
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        # Data untuk grafik pemesanan 7 hari terakhir
+        seven_days_ago = datetime.now().date() - timedelta(days=7)
         
-        # Create new user
-        user = User(
-            name=data.get('name'),
-            email=data.get('email'),
-            phone=data.get('phone', '')
-        )
-        user.set_password(data.get('password'))
+        print(f"🔍 Fetching chart data from {seven_days_ago} to today")
         
-        db.session.add(user)
-        db.session.commit()
+        # Query untuk booking per hari
+        daily_bookings = db.session.query(
+            db.func.date(Booking.created_at).label('date'),
+            db.func.count(Booking.id).label('bookings')
+        ).filter(
+            Booking.created_at >= seven_days_ago
+        ).group_by(
+            db.func.date(Booking.created_at)
+        ).order_by('date').all()
+
+        print(f"📊 Found {len(daily_bookings)} days with bookings")
+
+        # Format data untuk chart - pastikan ada data untuk semua 7 hari
+        booking_chart_data = []
+        day_names = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
         
+        for i in range(7):
+            current_date = (datetime.now().date() - timedelta(days=6-i))
+            date_str = current_date.strftime('%Y-%m-%d')
+            day_name = day_names[current_date.weekday()]
+            
+            # Cari data untuk tanggal ini
+            booking_count = 0
+            for booking in daily_bookings:
+                if booking.date == current_date:
+                    booking_count = booking.bookings
+                    break
+            
+            booking_chart_data.append({
+                'day': day_name,
+                'date': date_str,
+                'bookings': booking_count
+            })
+
+        print(f"📈 Chart data prepared: {booking_chart_data}")
+
+        # Data untuk tipe kamar terpopuler
+        room_type_stats = db.session.query(
+            RoomType.name,
+            db.func.count(BookingRoom.id).label('bookings')
+        ).join(
+            Room, RoomType.id == Room.room_type_id
+        ).join(
+            BookingRoom, Room.id == BookingRoom.room_id
+        ).join(
+            Booking, BookingRoom.booking_id == Booking.id
+        ).filter(
+            Booking.created_at >= seven_days_ago
+        ).group_by(
+            RoomType.name
+        ).order_by(db.desc('bookings')).all()
+
+        room_type_data = []
+        for stat in room_type_stats:
+            room_type_data.append({
+                'type': stat.name,
+                'bookings': stat.bookings
+            })
+
+        print(f"🏨 Room type stats: {room_type_data}")
+
+        # Data untuk status booking
+        booking_status_stats = db.session.query(
+            Booking.status,
+            db.func.count(Booking.id).label('count')
+        ).group_by(Booking.status).all()
+
+        status_data = []
+        for stat in booking_status_stats:
+            status_data.append({
+                'status': stat.status,
+                'count': stat.count
+            })
+
+        print(f"📋 Status stats: {status_data}")
+
+        charts_data = {
+            'booking_trends': booking_chart_data,
+            'popular_room_types': room_type_data,
+            'booking_status': status_data
+        }
+
         return jsonify({
-            'message': 'User registered successfully',
-            'user': {
-                'id': user.id,
-                'name': user.name,
-                'email': user.email,
-                'phone': user.phone,
-                'role': user.role
-            }
-        }), 201
+            'success': True,
+            'data': charts_data
+        }), 200
         
     except Exception as e:
-        return jsonify({'message': str(e)}), 400
+        print(f"❌ ERROR in get_dashboard_charts: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 
 @app.route('/api/auth/login', methods=['POST', 'OPTIONS'])
 def login():
@@ -1787,7 +1879,7 @@ if __name__ == '__main__':
     print("🔧 CORS Configuration: Multi-layer protection")
     print("💡 Available Endpoints:")
     print("   🔐 AUTH: /api/auth/register, /api/auth/login, /api/auth/me")
-    print("   📊 DASHBOARD: /api/admin/dashboard/stats")
+    print("   📊 DASHBOARD: /api/admin/dashboard/stats, /api/admin/dashboard/charts")
     print("   🏨 ROOMS: /api/rooms, /api/rooms/<id>")
     print("   📖 BOOKINGS: /api/bookings, /api/bookings/me")
     print("   ⭐ RATINGS: /api/ratings, /api/admin/ratings")
