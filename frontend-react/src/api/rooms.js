@@ -150,4 +150,4 @@ export const facilitiesAPI = {
   getFacilities: () => apiClient.get('/facilities'),
   getAdminFacilities: () => apiClient.get('/admin/facilities'),
   createFacility: (data) => apiClient.post('/admin/facilities', data),
-};
+};  

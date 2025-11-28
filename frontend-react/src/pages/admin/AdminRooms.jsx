@@ -250,10 +250,11 @@ export const AdminRooms = () => {
     })
     setSelectedFiles([])
     
-    // Set selected facilities dari room yang diedit
+    // PERBAIKAN: Pastikan facilities tersync dengan benar
     if (room.facility_rooms && room.facility_rooms.length > 0) {
       const facilityIds = room.facility_rooms.map(fr => fr.facility_id);
       setSelectedFacilities(facilityIds);
+      console.log('🔧 DEBUG - Editing room facilities:', facilityIds)
     } else {
       setSelectedFacilities([]);
     }
@@ -337,10 +338,13 @@ export const AdminRooms = () => {
     formDataToSend.append('description', formData.description)
     formDataToSend.append('status', formData.status)
     
-    // Append facilities untuk room baru
+    // PERBAIKAN: Append facilities dengan format yang benar
     selectedFacilities.forEach(facilityId => {
       formDataToSend.append('facilities[]', facilityId)
     })
+    
+    // Debug: log facilities yang akan dikirim
+    console.log('🔧 DEBUG - Facilities to send:', selectedFacilities)
     
     // Append files
     selectedFiles.forEach(file => {
@@ -349,7 +353,10 @@ export const AdminRooms = () => {
     
     try {
       if (editingRoom) {
-        await updateRoomMutation.mutateAsync({ id: editingRoom.id, formData: formDataToSend })
+        await updateRoomMutation.mutateAsync({ 
+          id: editingRoom.id, 
+          formData: formDataToSend 
+        })
       } else {
         createRoomMutation.mutate(formDataToSend)
       }
