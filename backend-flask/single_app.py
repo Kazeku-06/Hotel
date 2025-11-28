@@ -1279,6 +1279,11 @@ def admin_rooms():
                 price_with_breakfast = request.form.get('price_with_breakfast')
                 status = request.form.get('status', 'available')
                 description = request.form.get('description', '')
+                
+                # 🔥 PERBAIKAN: Get facilities dari form data
+                facilities = request.form.getlist('facilities[]')
+                print(f"🔧 DEBUG - Received facilities for CREATE: {facilities}")
+                
             else:
                 # Handle JSON data (fallback)
                 data = request.get_json()
@@ -1289,6 +1294,7 @@ def admin_rooms():
                 price_with_breakfast = data.get('price_with_breakfast')
                 status = data.get('status', 'available')
                 description = data.get('description', '')
+                facilities = data.get('facilities', [])
             
             # Validasi required fields
             if not all([room_number, room_type_id, capacity, price_no_breakfast, price_with_breakfast]):
@@ -1310,7 +1316,25 @@ def admin_rooms():
             )
             
             db.session.add(room)
-            db.session.flush()
+            db.session.flush()  # Get room ID
+            
+            # 🔥 PERBAIKAN: Handle facilities association untuk CREATE
+            if facilities:
+                print(f"🔄 Adding {len(facilities)} facilities to room {room.room_number}")
+                for facility_id in facilities:
+                    # Check if facility exists
+                    facility = Facility.query.get(facility_id)
+                    if facility:
+                        room_facility = FacilityRoom(
+                            room_id=room.id,
+                            facility_id=facility_id
+                        )
+                        db.session.add(room_facility)
+                        print(f"✅ Added facility {facility.name} to room {room.room_number}")
+                    else:
+                        print(f"⚠️ Facility with ID {facility_id} not found")
+            else:
+                print("ℹ️ No facilities provided for this room")
             
             # Handle photo uploads (only for form-data)
             if request.content_type.startswith('multipart/form-data'):
@@ -1344,6 +1368,7 @@ def admin_rooms():
 
     except Exception as e:
         db.session.rollback()
+        print(f"❌ ERROR in admin_rooms POST: {str(e)}")
         return jsonify({'message': str(e)}), 400
 
 @app.route('/api/admin/rooms/<room_id>', methods=['PUT', 'DELETE', 'OPTIONS'])
@@ -1364,6 +1389,12 @@ def admin_room_detail(room_id):
             return jsonify({'message': 'Room not found'}), 404
 
         if request.method == 'PUT':
+            # 🔥 DEBUG DETAIL: Log semua data yang diterima
+            print(f"🔧 DEBUG - UPDATE ROOM {room_id}")
+            print(f"📦 Content-Type: {request.content_type}")
+            print(f"📦 Form data: {request.form}")
+            print(f"📦 Files: {request.files}")
+            
             # Check content type
             if request.content_type.startswith('multipart/form-data'):
                 room_number = request.form.get('room_number')
@@ -1373,6 +1404,13 @@ def admin_room_detail(room_id):
                 price_with_breakfast = request.form.get('price_with_breakfast')
                 status = request.form.get('status')
                 description = request.form.get('description')
+                
+                # 🔥 PERBAIKAN: Get facilities dari form data untuk UPDATE
+                facilities = request.form.getlist('facilities[]')
+                print(f"🔧 DEBUG - Received facilities for UPDATE: {facilities}")
+                print(f"🔧 DEBUG - Type of facilities: {type(facilities)}")
+                print(f"🔧 DEBUG - Facilities length: {len(facilities)}")
+                
             else:
                 data = request.get_json()
                 room_number = data.get('room_number')
@@ -1382,22 +1420,76 @@ def admin_room_detail(room_id):
                 price_with_breakfast = data.get('price_with_breakfast')
                 status = data.get('status')
                 description = data.get('description')
+                facilities = data.get('facilities', [])
             
+            # Validasi room number
             if room_number and room_number != room.room_number:
                 if Room.query.filter_by(room_number=room_number).first():
                     return jsonify({'message': 'Room number already exists'}), 400
 
-            if room_number: room.room_number = room_number
-            if room_type_id: room.room_type_id = room_type_id
-            if capacity: room.capacity = int(capacity)
-            if price_no_breakfast: room.price_no_breakfast = float(price_no_breakfast)
-            if price_with_breakfast: room.price_with_breakfast = float(price_with_breakfast)
-            if status: room.status = status
-            if description is not None: room.description = description
+            # Update room data
+            if room_number: 
+                room.room_number = room_number
+                print(f"🔄 Updated room_number: {room_number}")
+            if room_type_id: 
+                room.room_type_id = room_type_id
+                print(f"🔄 Updated room_type_id: {room_type_id}")
+            if capacity: 
+                room.capacity = int(capacity)
+                print(f"🔄 Updated capacity: {capacity}")
+            if price_no_breakfast: 
+                room.price_no_breakfast = float(price_no_breakfast)
+                print(f"🔄 Updated price_no_breakfast: {price_no_breakfast}")
+            if price_with_breakfast: 
+                room.price_with_breakfast = float(price_with_breakfast)
+                print(f"🔄 Updated price_with_breakfast: {price_with_breakfast}")
+            if status: 
+                room.status = status
+                print(f"🔄 Updated status: {status}")
+            if description is not None: 
+                room.description = description
+                print(f"🔄 Updated description: {description}")
             
+            # 🔥 PERBAIKAN: Update facilities - hapus yang lama, tambah yang baru
+            print(f"🔄 Processing facilities update for room {room.room_number}")
+            print(f"📋 Facilities to set: {facilities}")
+            
+            # Cek facilities yang ada sekarang
+            existing_facilities = FacilityRoom.query.filter_by(room_id=room_id).all()
+            print(f"📊 Existing facilities before update: {[ef.facility_id for ef in existing_facilities]}")
+            
+            # Hapus semua facility associations yang lama
+            print(f"🗑️ Removing {len(existing_facilities)} existing facilities")
+            for existing_facility in existing_facilities:
+                print(f"🗑️ Removing facility: {existing_facility.facility_id}")
+                db.session.delete(existing_facility)
+            
+            # Commit penghapusan dulu
+            db.session.commit()
+            print("✅ Successfully removed old facilities")
+            
+            # Tambah facilities yang baru
+            if facilities:
+                print(f"➕ Adding {len(facilities)} new facilities")
+                for i, facility_id in enumerate(facilities):
+                    facility = Facility.query.get(facility_id)
+                    if facility:
+                        room_facility = FacilityRoom(
+                            room_id=room.id,
+                            facility_id=facility_id
+                        )
+                        db.session.add(room_facility)
+                        print(f"✅ [{i+1}] Added facility {facility.name} ({facility_id}) to room {room.room_number}")
+                    else:
+                        print(f"⚠️ Facility with ID {facility_id} not found in database")
+            else:
+                print("ℹ️ No facilities provided, all facilities removed")
+            
+            # Handle photo uploads (only for form-data)
             if request.content_type.startswith('multipart/form-data'):
                 photos = request.files.getlist('photos')
                 if photos and photos[0].filename:
+                    print(f"📸 Processing {len(photos)} new photos")
                     for i, photo in enumerate(photos):
                         if photo and allowed_file(photo.filename):
                             filename = secure_filename(photo.filename)
@@ -1413,8 +1505,15 @@ def admin_room_detail(room_id):
                                 is_primary=(i == 0 and not room.photos)
                             )
                             db.session.add(room_photo)
+                            print(f"✅ Added photo: {filename}")
             
+            # Commit semua perubahan
             db.session.commit()
+            print("🎉 Room updated successfully with all changes committed!")
+            
+            # Verifikasi facilities setelah update
+            updated_facilities = FacilityRoom.query.filter_by(room_id=room_id).all()
+            print(f"🔍 Final facilities after update: {[uf.facility_id for uf in updated_facilities]}")
             
             return jsonify({
                 'message': 'Room updated successfully',
@@ -1439,6 +1538,9 @@ def admin_room_detail(room_id):
 
     except Exception as e:
         db.session.rollback()
+        print(f"❌ ERROR in admin_room_detail PUT: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'message': str(e)}), 400
 
 @app.route('/api/admin/rooms/<room_id>/photos/<photo_id>', methods=['DELETE', 'OPTIONS'])

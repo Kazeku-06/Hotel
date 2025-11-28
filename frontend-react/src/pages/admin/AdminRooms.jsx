@@ -114,8 +114,10 @@ export const AdminRooms = () => {
       queryClient.invalidateQueries(['admin-rooms'])
       setShowModal(false)
       resetForm()
+      alert('Room created successfully!')
     },
     onError: (error) => {
+      console.error('❌ Create room error:', error)
       alert(error.response?.data?.message || 'Failed to create room')
     }
   })
@@ -128,8 +130,10 @@ export const AdminRooms = () => {
       setShowModal(false)
       setEditingRoom(null)
       resetForm()
+      alert('Room updated successfully!')
     },
     onError: (error) => {
+      console.error('❌ Update room error:', error)
       alert(error.response?.data?.message || 'Failed to update room')
     }
   })
@@ -162,8 +166,11 @@ export const AdminRooms = () => {
     onSuccess: () => {
       queryClient.invalidateQueries(['facilities'])
       setNewFacility({ name: '', icon: '' })
+      setShowFacilityModal(false)
+      alert('Facility created successfully!')
     },
     onError: (error) => {
+      console.error('❌ Create facility error:', error)
       alert(error.response?.data?.message || 'Failed to create facility')
     }
   })
@@ -238,6 +245,7 @@ export const AdminRooms = () => {
   }
 
   const handleEdit = (room) => {
+    console.log('🔧 DEBUG - Editing room:', room)
     setEditingRoom(room)
     setFormData({
       room_number: room.room_number,
@@ -284,10 +292,15 @@ export const AdminRooms = () => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index))
   }
 
+  // 🔥 PERBAIKAN: Handle create facility
   const handleCreateFacility = () => {
-    if (newFacility.name.trim()) {
-      createFacilityMutation.mutate(newFacility)
+    if (!newFacility.name.trim()) {
+      alert('Facility name is required')
+      return
     }
+
+    console.log('🆕 Creating new facility:', newFacility)
+    createFacilityMutation.mutate(newFacility)
   }
 
   // Handle create room type dengan better debugging
@@ -330,6 +343,19 @@ export const AdminRooms = () => {
     }
     
     const formDataToSend = new FormData()
+    
+    // Debug: Tampilkan semua data yang akan dikirim
+    console.log('🔧 DEBUG - Form data to send:')
+    console.log('  - Room Number:', formData.room_number)
+    console.log('  - Room Type ID:', formData.room_type_id)
+    console.log('  - Capacity:', formData.capacity)
+    console.log('  - Price No Breakfast:', formData.price_no_breakfast)
+    console.log('  - Price With Breakfast:', formData.price_with_breakfast)
+    console.log('  - Description:', formData.description)
+    console.log('  - Status:', formData.status)
+    console.log('  - Selected Facilities:', selectedFacilities)
+    console.log('  - Selected Files:', selectedFiles.length)
+    
     formDataToSend.append('room_number', formData.room_number)
     formDataToSend.append('room_type_id', formData.room_type_id)
     formDataToSend.append('capacity', formData.capacity.toString())
@@ -341,10 +367,14 @@ export const AdminRooms = () => {
     // PERBAIKAN: Append facilities dengan format yang benar
     selectedFacilities.forEach(facilityId => {
       formDataToSend.append('facilities[]', facilityId)
+      console.log('  - Appending facility:', facilityId)
     })
     
-    // Debug: log facilities yang akan dikirim
-    console.log('🔧 DEBUG - Facilities to send:', selectedFacilities)
+    // Debug: Tampilkan isi FormData
+    console.log('📦 DEBUG - FormData contents:')
+    for (let [key, value] of formDataToSend.entries()) {
+      console.log(`  - ${key}:`, value)
+    }
     
     // Append files
     selectedFiles.forEach(file => {
@@ -353,14 +383,17 @@ export const AdminRooms = () => {
     
     try {
       if (editingRoom) {
+        console.log(`🔄 Updating room ${editingRoom.id}`)
         await updateRoomMutation.mutateAsync({ 
           id: editingRoom.id, 
           formData: formDataToSend 
         })
       } else {
-        createRoomMutation.mutate(formDataToSend)
+        console.log('🆕 Creating new room')
+        await createRoomMutation.mutateAsync(formDataToSend)
       }
     } catch (error) {
+      console.error('❌ Submit error:', error)
       alert(error.response?.data?.message || 'Failed to save room')
     }
   }
@@ -675,9 +708,9 @@ export const AdminRooms = () => {
                         <button
                           type="button"
                           onClick={() => setShowFacilityModal(true)}
-                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm transition-colors duration-300"
                         >
-                          Add New Facility
+                          + Add New Facility
                         </button>
                       </div>
                       
@@ -936,6 +969,89 @@ export const AdminRooms = () => {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🔥 PERBAIKAN: Add Facility Modal */}
+        {showFacilityModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
+                    Add New Facility
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowFacilityModal(false)
+                      setNewFacility({ name: '', icon: '' })
+                    }}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Facility Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={newFacility.name}
+                      onChange={(e) => setNewFacility({...newFacility, name: e.target.value})}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                      placeholder="e.g., Swimming Pool, Gym, WiFi"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Icon (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={newFacility.icon}
+                      onChange={(e) => setNewFacility({...newFacility, icon: e.target.value})}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
+                      placeholder="e.g., 🏊, 💪, 📶"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      You can use emojis as icons
+                    </p>
+                  </div>
+
+                  <div className="flex space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowFacilityModal(false)
+                        setNewFacility({ name: '', icon: '' })
+                      }}
+                      className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateFacility}
+                      disabled={!newFacility.name.trim() || createFacilityMutation.isLoading}
+                      className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300"
+                    >
+                      {createFacilityMutation.isLoading ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                          Adding...
+                        </div>
+                      ) : (
+                        'Add Facility'
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
