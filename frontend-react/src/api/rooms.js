@@ -77,12 +77,13 @@ export const roomTypesAPI = {
 };
 
 export const roomsAPI = {
-  // Public endpoints
+  // Public endpoints - UPDATED dengan pagination dan search
   getRooms: (filters = {}) => {
     console.log('🔍 FILTERS SENT TO API:', filters);
     
     const params = {};
     
+    // Existing filters
     if (filters.room_type) params.room_type = filters.room_type;
     if (filters.min_price) params.min_price = filters.min_price;
     if (filters.max_price) params.max_price = filters.max_price;
@@ -92,6 +93,11 @@ export const roomsAPI = {
     if (filters.facilities && filters.facilities.length > 0) {
       params['facilities[]'] = filters.facilities;
     }
+    
+    // NEW: Add search and pagination parameters
+    if (filters.search) params.search = filters.search;
+    if (filters.page) params.page = filters.page;
+    if (filters.limit) params.limit = filters.limit;
     
     console.log('🔍 FINAL API PARAMS:', params);
     
