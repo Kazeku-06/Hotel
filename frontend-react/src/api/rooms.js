@@ -36,8 +36,34 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Room Types API
+export const roomTypesAPI = {
+  // Get all room types - PUBLIC
+  getRoomTypes: () => {
+    return apiClient.get('/room-types')
+  },
+
+  // Create new room type - ADMIN ONLY
+  createRoomType: (data) => {
+    const token = localStorage.getItem('token');
+    console.log('🔐 DEBUG - Token for room type creation:', token ? 'Present' : 'Missing');
+    
+    if (!token) {
+      return Promise.reject(new Error('No authentication token found. Please log in.'));
+    }
+
+    // 🔥 PERBAIKAN: Gunakan endpoint yang benar - /room-types (bukan /admin/room-types)
+    return apiClient.post('/room-types', data, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    })
+  }
+};
+
 export const roomsAPI = {
-  // ✅ PERBAIKAN: Handle filters dengan benar
+  // Public endpoints
   getRooms: (filters = {}) => {
     console.log('🔍 FILTERS SENT TO API:', filters);
     
@@ -48,7 +74,7 @@ export const roomsAPI = {
     if (filters.max_price) params.max_price = filters.max_price;
     if (filters.capacity) params.capacity = filters.capacity;
     
-    // Handle facilities array - PERBAIKAN: gunakan facilities[] untuk array
+    // Handle facilities array
     if (filters.facilities && filters.facilities.length > 0) {
       params['facilities[]'] = filters.facilities;
     }
@@ -58,10 +84,9 @@ export const roomsAPI = {
     return apiClient.get('/rooms', { params });
   },
   
-  // Untuk public rooms (tanpa auth) - GET SINGLE ROOM
   getRoom: (id) => apiClient.get(`/rooms/${id}`),
   
-  // Untuk admin rooms (dengan auth)
+  // Admin endpoints (require auth)
   getAdminRooms: () => apiClient.get('/admin/rooms'),
 
   createRoomWithPhotos: (formData) => {
@@ -85,18 +110,17 @@ export const roomsAPI = {
   deleteRoomPhoto: (roomId, photoId) => 
     apiClient.delete(`/admin/rooms/${roomId}/photos/${photoId}`),
 
+  // Room Types API
+  getRoomTypes: roomTypesAPI.getRoomTypes,
+  createRoomType: roomTypesAPI.createRoomType,
+
   // Facilities API
   getFacilities: () => apiClient.get('/facilities'),
-  
   getAdminFacilities: () => apiClient.get('/admin/facilities'),
-  
   createFacility: (data) => apiClient.post('/admin/facilities', data),
-  
   getRoomFacilities: (roomId) => apiClient.get(`/admin/rooms/${roomId}/facilities`),
-  
   addRoomFacility: (roomId, facilityId) => 
     apiClient.post(`/admin/rooms/${roomId}/facilities`, { facility_id: facilityId }),
-  
   removeRoomFacility: (roomId, facilityId) => 
     apiClient.delete(`/admin/rooms/${roomId}/facilities?facility_id=${facilityId}`)
 };

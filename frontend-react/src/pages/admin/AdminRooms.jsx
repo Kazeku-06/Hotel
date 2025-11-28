@@ -1,15 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { roomsAPI, facilitiesAPI } from '../../api/rooms'
 import { formatCurrency } from '../../utils/formatCurrency'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
 export const AdminRooms = () => {
   const [showModal, setShowModal] = useState(false)
   const [showFacilityModal, setShowFacilityModal] = useState(false)
+  const [showRoomTypeModal, setShowRoomTypeModal] = useState(false)
   const [editingRoom, setEditingRoom] = useState(null)
   const [selectedFiles, setSelectedFiles] = useState([])
   const [selectedFacilities, setSelectedFacilities] = useState([])
   const [newFacility, setNewFacility] = useState({ name: '', icon: '' })
+  const [newRoomType, setNewRoomType] = useState({ name: '', description: '' })
   const [formData, setFormData] = useState({
     room_number: '',
     room_type_id: '',
@@ -21,6 +23,33 @@ export const AdminRooms = () => {
   })
   
   const queryClient = useQueryClient()
+
+  // Check authentication on component mount
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    const userStr = localStorage.getItem('user')
+    
+    console.log('🔐 DEBUG - AdminRooms mounted:')
+    console.log('  - Token:', token ? `Present (${token.substring(0, 20)}...)` : 'Missing')
+    console.log('  - User:', userStr ? JSON.parse(userStr) : 'Missing')
+    
+    if (!token || !userStr) {
+      alert('Please log in to access admin features')
+      window.location.href = '/login'
+      return
+    }
+    
+    try {
+      const userData = JSON.parse(userStr)
+      if (userData.role !== 'admin') {
+        alert('Admin access required. Your role: ' + userData.role)
+        window.location.href = '/'
+      }
+    } catch (e) {
+      console.error('Error parsing user data:', e)
+      window.location.href = '/login'
+    }
+  }, [])
 
   // Query untuk admin rooms dengan auth
   const { data: rooms, isLoading, error } = useQuery({
@@ -35,15 +64,33 @@ export const AdminRooms = () => {
     queryFn: () => facilitiesAPI.getFacilities(),
   })
 
-  // Query untuk room facilities (jika editing)
-  const { data: roomFacilities } = useQuery({
-    queryKey: ['room-facilities', editingRoom?.id],
-    queryFn: () => editingRoom ? roomsAPI.getRoomFacilities(editingRoom.id) : null,
-    enabled: !!editingRoom
+  // Query untuk room types
+  const { data: roomTypes, error: roomTypesError } = useQuery({
+    queryKey: ['room-types'],
+    queryFn: () => roomsAPI.getRoomTypes(),
+    retry: 1,
+    onError: (error) => {
+      console.warn('⚠️ Room types endpoint not available:', error.message)
+    }
   })
 
-  // Extract room types dari rooms data
+  // Extract room types dengan handle response structure yang berbeda
   const availableRoomTypes = useMemo(() => {
+    console.log('🎯 Room Types Data from API:', roomTypes)
+    
+    if (roomTypes?.data) {
+      // Structure 1: { success: true, data: [], count: number }
+      if (roomTypes.data.success && Array.isArray(roomTypes.data.data)) {
+        return roomTypes.data.data
+      }
+      // Structure 2: langsung array
+      else if (Array.isArray(roomTypes.data)) {
+        return roomTypes.data
+      }
+    }
+    
+    // Fallback: extract dari rooms data
+    console.log('🔄 Using fallback: extracting room types from rooms data')
     if (!rooms?.data) return []
     
     const roomTypesMap = {}
@@ -57,10 +104,8 @@ export const AdminRooms = () => {
       }
     })
     
-    const roomTypes = Object.values(roomTypesMap)
-    console.log('🎯 Extracted Room Types:', roomTypes)
-    return roomTypes
-  }, [rooms?.data])
+    return Object.values(roomTypesMap)
+  }, [rooms?.data, roomTypes?.data])
 
   // Mutation untuk create room dengan form data
   const createRoomMutation = useMutation({
@@ -111,30 +156,6 @@ export const AdminRooms = () => {
     }
   })
 
-  // Mutation untuk add facility
-  const addFacilityMutation = useMutation({
-    mutationFn: ({ roomId, facilityId }) => roomsAPI.addRoomFacility(roomId, facilityId),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['room-facilities'])
-      queryClient.invalidateQueries(['admin-rooms'])
-    },
-    onError: (error) => {
-      alert(error.response?.data?.message || 'Failed to add facility')
-    }
-  })
-
-  // Mutation untuk remove facility
-  const removeFacilityMutation = useMutation({
-    mutationFn: ({ roomId, facilityId }) => roomsAPI.removeRoomFacility(roomId, facilityId),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['room-facilities'])
-      queryClient.invalidateQueries(['admin-rooms'])
-    },
-    onError: (error) => {
-      alert(error.response?.data?.message || 'Failed to remove facility')
-    }
-  })
-
   // Mutation untuk create new facility
   const createFacilityMutation = useMutation({
     mutationFn: (data) => facilitiesAPI.createFacility(data),
@@ -144,6 +165,41 @@ export const AdminRooms = () => {
     },
     onError: (error) => {
       alert(error.response?.data?.message || 'Failed to create facility')
+    }
+  })
+
+  // Mutation untuk create new room type
+  const createRoomTypeMutation = useMutation({
+    mutationFn: (data) => {
+      console.log('🔐 DEBUG - Creating room type with data:', data)
+      return roomsAPI.createRoomType(data)
+    },
+    onSuccess: (response) => {
+      console.log('✅ DEBUG - Room type created successfully:', response.data)
+      queryClient.invalidateQueries(['room-types'])
+      setNewRoomType({ name: '', description: '' })
+      setShowRoomTypeModal(false)
+      alert('Room type created successfully!')
+    },
+    onError: (error) => {
+      console.error('❌ DEBUG - Failed to create room type:')
+      console.error('  - Error:', error)
+      console.error('  - Response:', error.response)
+      console.error('  - Status:', error.response?.status)
+      console.error('  - Data:', error.response?.data)
+      
+      if (error.response?.status === 401) {
+        alert('Authentication failed. Please log in again.')
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        window.location.href = '/login'
+      } else if (error.response?.status === 403) {
+        alert('Admin access required.')
+      } else if (error.response?.status === 404) {
+        alert('Endpoint not found. Please check the server URL.')
+      } else {
+        alert(error.response?.data?.message || 'Failed to create room type.')
+      }
     }
   })
 
@@ -161,6 +217,8 @@ export const AdminRooms = () => {
   const getStatusColor = (status) => {
     return status === 'available' 
       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+      : status === 'booked'
+      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
       : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
   }
 
@@ -225,26 +283,50 @@ export const AdminRooms = () => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index))
   }
 
-  const handleAddFacility = (facilityId) => {
-    if (editingRoom && facilityId) {
-      addFacilityMutation.mutate({ roomId: editingRoom.id, facilityId })
-    }
-  }
-
-  const handleRemoveFacility = (facilityId) => {
-    if (editingRoom && facilityId) {
-      removeFacilityMutation.mutate({ roomId: editingRoom.id, facilityId })
-    }
-  }
-
   const handleCreateFacility = () => {
     if (newFacility.name.trim()) {
       createFacilityMutation.mutate(newFacility)
     }
   }
 
+  // Handle create room type dengan better debugging
+  const handleCreateRoomType = async () => {
+    if (!newRoomType.name.trim()) {
+      alert('Room type name is required')
+      return
+    }
+
+    // Debug authentication sebelum API call
+    const token = localStorage.getItem('token')
+    const userStr = localStorage.getItem('user')
+    
+    console.log('🔐 DEBUG - Authentication check before room type creation:')
+    console.log('  - Token:', token ? 'Present' : 'Missing')
+    console.log('  - User:', userStr ? JSON.parse(userStr) : 'Missing')
+    
+    if (!token) {
+      alert('❌ No authentication token found. Please log in.')
+      window.location.href = '/login'
+      return
+    }
+
+    try {
+      console.log('🚀 DEBUG - Proceeding with room type creation...')
+      await createRoomTypeMutation.mutateAsync(newRoomType)
+    } catch (error) {
+      // Error sudah dihandle di onError
+      console.error('Create room type final error:', error)
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
+    // Validasi room type
+    if (!formData.room_type_id) {
+      alert('Please select a room type')
+      return
+    }
     
     const formDataToSend = new FormData()
     formDataToSend.append('room_number', formData.room_number)
@@ -267,61 +349,12 @@ export const AdminRooms = () => {
     
     try {
       if (editingRoom) {
-        // Untuk edit room, update dulu roomnya lalu handle facilities
         await updateRoomMutation.mutateAsync({ id: editingRoom.id, formData: formDataToSend })
-        
-        // Handle facilities untuk room yang diedit
-        if (selectedFacilities.length > 0) {
-          await handleRoomFacilities(editingRoom.id);
-        }
-        
-        // Success handling
-        queryClient.invalidateQueries(['admin-rooms'])
-        setShowModal(false)
-        setEditingRoom(null)
-        resetForm()
       } else {
-        // Untuk add new room, langsung kirim dengan facilities
         createRoomMutation.mutate(formDataToSend)
       }
     } catch (error) {
       alert(error.response?.data?.message || 'Failed to save room')
-    }
-  }
-
-  // Function untuk handle room facilities saat edit
-  const handleRoomFacilities = async (roomId) => {
-    try {
-      // Get current facilities untuk room yang diedit
-      let currentFacilities = [];
-      if (editingRoom) {
-        const roomFacilitiesResponse = await roomsAPI.getRoomFacilities(editingRoom.id);
-        currentFacilities = roomFacilitiesResponse.data.map(f => f.id);
-      }
-
-      // Facilities to add
-      const facilitiesToAdd = selectedFacilities.filter(facilityId => 
-        !currentFacilities.includes(facilityId)
-      );
-
-      // Facilities to remove
-      const facilitiesToRemove = currentFacilities.filter(facilityId => 
-        !selectedFacilities.includes(facilityId)
-      );
-
-      // Add new facilities
-      for (const facilityId of facilitiesToAdd) {
-        await addFacilityMutation.mutateAsync({ roomId, facilityId });
-      }
-
-      // Remove facilities yang tidak dipilih
-      for (const facilityId of facilitiesToRemove) {
-        await removeFacilityMutation.mutateAsync({ roomId, facilityId });
-      }
-
-    } catch (error) {
-      console.error('Error handling room facilities:', error);
-      // Tidak throw error di sini karena room sudah berhasil diupdate
     }
   }
 
@@ -357,12 +390,6 @@ export const AdminRooms = () => {
     )
   }
 
-  // Debug error
-  if (error) {
-    console.error('Error details:', error)
-    console.error('Error response:', error.response)
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -391,6 +418,11 @@ export const AdminRooms = () => {
             </h1>
             <p className="text-gray-600 dark:text-gray-400">
               View and manage all hotel rooms | Room Types: {availableRoomTypes.length}
+              {roomTypesError && (
+                <span className="text-yellow-600 ml-2">
+                  (Using fallback data)
+                </span>
+              )}
             </p>
           </div>
           <button 
@@ -409,10 +441,6 @@ export const AdminRooms = () => {
             <p className="font-semibold">Failed to load rooms</p>
             <p className="text-sm mt-1">
               {error.response?.data?.message || error.message}
-            </p>
-            <p className="text-xs mt-2">
-              Status: {error.response?.status} | 
-              Please check if you're logged in as admin
             </p>
           </div>
         )}
@@ -576,6 +604,7 @@ export const AdminRooms = () => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Room Number */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Room Number *
@@ -591,10 +620,20 @@ export const AdminRooms = () => {
                     />
                   </div>
 
+                  {/* Room Type */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Room Type * ({availableRoomTypes.length} available)
-                    </label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Room Type * ({availableRoomTypes.length} available)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowRoomTypeModal(true)}
+                        className="text-sm bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded transition-colors duration-300"
+                      >
+                        + Add New Type
+                      </button>
+                    </div>
                     <select
                       name="room_type_id"
                       value={formData.room_type_id}
@@ -605,18 +644,18 @@ export const AdminRooms = () => {
                       <option value="">Select Room Type</option>
                       {availableRoomTypes.map((type) => (
                         <option key={type.id} value={type.id}>
-                          {type.name}
+                          {type.name} {type.description && `- ${type.description}`}
                         </option>
                       ))}
                     </select>
                     {availableRoomTypes.length === 0 && (
                       <p className="text-red-500 text-sm mt-1">
-                        No room types available. Please check if rooms are loaded.
+                        No room types available. Please add a room type first.
                       </p>
                     )}
                   </div>
 
-                  {/* Facilities Section - TERSEDIA UNTUK ADD NEW DAN EDIT */}
+                  {/* Facilities Section */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Room Facilities
@@ -809,6 +848,7 @@ export const AdminRooms = () => {
                       >
                         <option value="available">Available</option>
                         <option value="unavailable">Unavailable</option>
+                        <option value="booked">Booked</option>
                       </select>
                     </div>
                   </div>
@@ -894,19 +934,19 @@ export const AdminRooms = () => {
           </div>
         )}
 
-        {/* Add Facility Modal */}
-        {showFacilityModal && (
+        {/* Add Room Type Modal */}
+        {showRoomTypeModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
               <div className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
-                    Add New Facility
+                    Add New Room Type
                   </h3>
                   <button
                     onClick={() => {
-                      setShowFacilityModal(false)
-                      setNewFacility({ name: '', icon: '' })
+                      setShowRoomTypeModal(false)
+                      setNewRoomType({ name: '', description: '' })
                     }}
                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-300"
                   >
@@ -917,27 +957,27 @@ export const AdminRooms = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Facility Name *
+                      Room Type Name *
                     </label>
                     <input
                       type="text"
-                      value={newFacility.name}
-                      onChange={(e) => setNewFacility({...newFacility, name: e.target.value})}
+                      value={newRoomType.name}
+                      onChange={(e) => setNewRoomType({...newRoomType, name: e.target.value})}
                       className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
-                      placeholder="e.g., WiFi, AC, TV"
+                      placeholder="e.g., Deluxe, Suite, Executive"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Icon (Optional)
+                      Description (Optional)
                     </label>
-                    <input
-                      type="text"
-                      value={newFacility.icon}
-                      onChange={(e) => setNewFacility({...newFacility, icon: e.target.value})}
+                    <textarea
+                      value={newRoomType.description}
+                      onChange={(e) => setNewRoomType({...newRoomType, description: e.target.value})}
+                      rows="3"
                       className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-colors duration-300"
-                      placeholder="e.g., 📶, ❄️, 📺"
+                      placeholder="e.g., Spacious room with premium amenities..."
                     />
                   </div>
 
@@ -945,8 +985,8 @@ export const AdminRooms = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setShowFacilityModal(false)
-                        setNewFacility({ name: '', icon: '' })
+                        setShowRoomTypeModal(false)
+                        setNewRoomType({ name: '', description: '' })
                       }}
                       className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300"
                     >
@@ -954,17 +994,17 @@ export const AdminRooms = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={handleCreateFacility}
-                      disabled={!newFacility.name.trim() || createFacilityMutation.isLoading}
-                      className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300"
+                      onClick={handleCreateRoomType}
+                      disabled={!newRoomType.name.trim() || createRoomTypeMutation.isLoading}
+                      className="flex-1 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300"
                     >
-                      {createFacilityMutation.isLoading ? (
+                      {createRoomTypeMutation.isLoading ? (
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                           Adding...
                         </div>
                       ) : (
-                        'Add Facility'
+                        'Add Room Type'
                       )}
                     </button>
                   </div>
