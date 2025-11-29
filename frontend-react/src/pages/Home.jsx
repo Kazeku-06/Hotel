@@ -60,6 +60,40 @@ export const Home = () => {
     return value !== ''
   }).length
 
+  // Array gambar hotel dari public directory
+  const hotelImages = [
+    '/hotel1.jpeg',
+    '/hotel2.jpeg', 
+    '/hotel3.jpeg',
+    '/hotel4.jpeg',
+  ]
+
+  // State untuk gambar yang sedang aktif
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
+  // Auto slide setiap 5 detik
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => 
+        prevIndex === hotelImages.length - 1 ? 0 : prevIndex + 1
+      )
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [hotelImages.length])
+
+  const nextImage = () => {
+    setCurrentImageIndex((prevIndex) => 
+      prevIndex === hotelImages.length - 1 ? 0 : prevIndex + 1
+    )
+  }
+
+  const prevImage = () => {
+    setCurrentImageIndex((prevIndex) => 
+      prevIndex === 0 ? hotelImages.length - 1 : prevIndex - 1
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -262,7 +296,7 @@ export const Home = () => {
           </div>
         </div>
 
-        {/* Additional Info Section */}
+        {/* Hotel Image Gallery Section */}
         <div className="mt-16 bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div>
@@ -292,10 +326,48 @@ export const Home = () => {
                 </li>
               </ul>
             </div>
-            <div className="bg-gray-200 dark:bg-gray-700 rounded-lg h-64 flex items-center justify-center">
-              <span className="text-gray-500 dark:text-gray-400 text-lg">
-                Hotel Image Gallery
-              </span>
+            
+            {/* Image Gallery */}
+            <div className="relative">
+              <div className="bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden h-64">
+                <img 
+                  src={hotelImages[currentImageIndex]} 
+                  alt="Hotel Gallery" 
+                  className="w-full h-full object-cover transition-opacity duration-500"
+                  onError={(e) => {
+                    e.target.src = '/placeholder-hotel.jpg' // Fallback image
+                  }}
+                />
+              </div>
+              
+              {/* Navigation Buttons */}
+              <button 
+                onClick={prevImage}
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-300"
+              >
+                ‹
+              </button>
+              <button 
+                onClick={nextImage}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-300"
+              >
+                ›
+              </button>
+              
+              {/* Image Indicators */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                {hotelImages.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      index === currentImageIndex 
+                        ? 'bg-white' 
+                        : 'bg-white bg-opacity-50'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>
