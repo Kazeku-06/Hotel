@@ -7,11 +7,7 @@ export const useDashboardStats = () => {
     queryFn: dashboardService.getDashboardStats,
     refetchInterval: 30000,
     staleTime: 10000,
-    onError: (error) => {
-      console.error('❌ useDashboardStats error:', error);
-    },
-    onSuccess: (data) => {
-      console.log('✅ useDashboardStats success:', data);
-    }
+    retry: 3, // Tambahkan retry
+    retryDelay: 1000,
   });
 };
