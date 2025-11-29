@@ -6,7 +6,7 @@ const API_BASE = 'http://localhost:5000/api';
 const apiClient = axios.create({
   baseURL: API_BASE,
   timeout: 10000,
-  withCredentials: false, // ❌ SET TO FALSE - ini penyebab masalah
+  withCredentials: true, // ✅ Use credentials for auth (align with global axios)
 });
 
 // Request interceptor
@@ -77,6 +77,9 @@ export const roomsAPI = {
   
   // Admin endpoints
   getAdminRooms: () => apiClient.get('/admin/rooms'),
+  // Room types endpoints (proxy to keep single import usable)
+  getRoomTypes: (params) => roomTypesAPI.getRoomTypes(params),
+  createRoomType: (data) => roomTypesAPI.createRoomType(data),
   createRoomWithPhotos: (formData) => apiClient.post('/admin/rooms', formData),
   updateRoomWithPhotos: (id, formData) => apiClient.put(`/admin/rooms/${id}`, formData),
   deleteRoom: (id) => apiClient.delete(`/admin/rooms/${id}`),
