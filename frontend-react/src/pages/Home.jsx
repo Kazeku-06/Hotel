@@ -95,66 +95,132 @@ export const Home = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-6xl font-bold text-gray-800 dark:text-white mb-6">
-            Welcome to <span className="text-gold-500">Grand Imperion</span>
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-8">
-            Experience unparalleled comfort and luxury in the heart of the city
-          </p>
+    <div className="min-h-screen bg-white dark:bg-gray-900">
+      {/* Header Banner dengan Traveloka-style */}
+      <div className="bg-gradient-to-r from-black via-gray-900 to-black relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/60"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+          <div className="text-center">
+            <div className="flex justify-center mb-6">
+              <div className="bg-yellow-500 text-black px-6 py-2 rounded-full text-sm font-bold uppercase tracking-wider">
+                Luxury Collection
+              </div>
+            </div>
+            <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-tight">
+              GRAND <span className="text-yellow-500">IMPERION</span>
+            </h1>
+            <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8 leading-relaxed">
+              Experience world-class luxury with premium amenities and exceptional service in the heart of the city
+            </p>
+            
+            {/* Traveloka-style Quick Features */}
+            <div className="flex flex-wrap justify-center gap-6 mb-12">
+              <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-2xl px-6 py-4 border border-yellow-500/20">
+                <span className="text-yellow-500 text-2xl mr-3">⭐</span>
+                <span className="text-white font-semibold">5-Star Rating</span>
+              </div>
+              <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-2xl px-6 py-4 border border-yellow-500/20">
+                <span className="text-yellow-500 text-2xl mr-3">🏆</span>
+                <span className="text-white font-semibold">Best Service 2024</span>
+              </div>
+              <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-2xl px-6 py-4 border border-yellow-500/20">
+                <span className="text-yellow-500 text-2xl mr-3">📍</span>
+                <span className="text-white font-semibold">City Center</span>
+              </div>
+            </div>
 
-          <div className="flex flex-wrap justify-center gap-4">
-            <div className="bg-gold-500 text-white px-6 py-3 rounded-lg font-semibold">
-              🏆 Best Service Award 2024
+            {/* CTA Button */}
+            <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-12 py-4 rounded-2xl text-lg transition-all duration-300 transform hover:scale-105 shadow-2xl shadow-yellow-500/25">
+              Book Now & Save 20%
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-10">
+        {/* Quick Stats Bar */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 text-center border border-gray-100 dark:border-gray-700">
+            <div className="text-2xl text-yellow-500 font-bold mb-2">4.9/5</div>
+            <div className="text-gray-600 dark:text-gray-400 text-sm">Guest Rating</div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 text-center border border-gray-100 dark:border-gray-700">
+            <div className="text-2xl text-yellow-500 font-bold mb-2">24/7</div>
+            <div className="text-gray-600 dark:text-gray-400 text-sm">Concierge</div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 text-center border border-gray-100 dark:border-gray-700">
+            <div className="text-2xl text-yellow-500 font-bold mb-2">Free</div>
+            <div className="text-gray-600 dark:text-gray-400 text-sm">Breakfast</div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 text-center border border-gray-100 dark:border-gray-700">
+            <div className="text-2xl text-yellow-500 font-bold mb-2">WiFi</div>
+            <div className="text-gray-600 dark:text-gray-400 text-sm">Premium</div>
+          </div>
+        </div>
+
+        {/* Hotel Features - Traveloka Style */}
+        <div className="mb-16">
+          <div className="flex items-center mb-8">
+            <div className="w-2 h-12 bg-yellow-500 rounded-full mr-4"></div>
+            <h2 className="text-3xl font-black text-gray-900 dark:text-white">Hotel Facilities</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="group bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 p-8 border-2 border-gray-100 dark:border-gray-700 hover:border-yellow-500/30">
+              <div className="flex items-start mb-4">
+                <div className="bg-yellow-500 text-black p-3 rounded-2xl text-2xl mr-4">🏊</div>
+                <div>
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">Infinity Pool</h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">Panoramic city view with luxury cabanas</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold">
-              ⭐ 5-Star Rating
+            
+            <div className="group bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 p-8 border-2 border-gray-100 dark:border-gray-700 hover:border-yellow-500/30">
+              <div className="flex items-start mb-4">
+                <div className="bg-yellow-500 text-black p-3 rounded-2xl text-2xl mr-4">🍽️</div>
+                <div>
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">Fine Dining</h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">Award-winning restaurants & 24/7 service</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-green-500 text-white px-6 py-3 rounded-lg font-semibold">
-              📍 Prime Location
+            
+            <div className="group bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 p-8 border-2 border-gray-100 dark:border-gray-700 hover:border-yellow-500/30">
+              <div className="flex items-start mb-4">
+                <div className="bg-yellow-500 text-black p-3 rounded-2xl text-2xl mr-4">💆</div>
+                <div>
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white mb-2">Luxury Spa</h3>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm">Full-service spa & wellness programs</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Hotel Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">
-            <div className="text-3xl mb-3">🏊</div>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Swimming Pool</h3>
-            <p className="text-gray-600 dark:text-gray-300">Infinity pool with city view</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">
-            <div className="text-3xl mb-3">🍽️</div>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Fine Dining</h3>
-            <p className="text-gray-600 dark:text-gray-300">5-star restaurant & room service</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">
-            <div className="text-3xl mb-3">💆</div>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Spa & Wellness</h3>
-            <p className="text-gray-600 dark:text-gray-300">Full service spa and gym</p>
-          </div>
-        </div>
-
-        {/* Mobile Filter Toggle */}
+        {/* Mobile Filter Toggle - Traveloka Style */}
         <div className="lg:hidden mb-6">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-4 flex items-center justify-between shadow-sm"
+            className="w-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-2xl p-5 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-300 hover:border-yellow-500"
           >
-            <span className="font-semibold text-gray-800 dark:text-white">
-              Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
-            </span>
-            <span className={`transform transition-transform ${showFilters ? 'rotate-180' : ''}`}>
+            <div className="flex items-center gap-3">
+              <div className="bg-yellow-500 text-black p-2 rounded-xl">
+                <span className="text-lg">⚡</span>
+              </div>
+              <span className="font-black text-lg text-gray-900 dark:text-white">
+                FILTERS {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+              </span>
+            </div>
+            <span className={`transform transition-transform duration-300 text-xl ${showFilters ? 'rotate-180 text-yellow-500' : 'text-gray-400'}`}>
               ▼
             </span>
           </button>
         </div>
 
         {/* Filters and Rooms Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-16">
           {/* Filters Sidebar */}
           <div className={`lg:col-span-1 ${showFilters ? 'block' : 'hidden lg:block'}`}>
             <RoomFilter 
@@ -166,87 +232,94 @@ export const Home = () => {
 
           {/* Rooms Grid */}
           <div className="lg:col-span-3">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-                  Available Rooms
-                </h2>
-                {activeFiltersCount > 0 && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {activeFiltersCount} filter(s) applied
-                  </p>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <span className="text-gray-600 dark:text-gray-400 text-sm">
-                  {roomsData.length} rooms found
-                </span>
+            {/* Header Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-6 border border-gray-100 dark:border-gray-700">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-2 h-12 bg-yellow-500 rounded-full"></div>
+                  <div>
+                    <h2 className="text-2xl font-black text-gray-900 dark:text-white">
+                      AVAILABLE ROOMS
+                    </h2>
+                    {activeFiltersCount > 0 && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 font-semibold">
+                        {activeFiltersCount} active filter(s)
+                      </p>
+                    )}
+                  </div>
+                </div>
                 
-                {activeFiltersCount > 0 && (
-                  <button
-                    onClick={clearFilters}
-                    className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium transition-colors duration-300"
-                  >
-                    Clear all
-                  </button>
-                )}
+                <div className="flex items-center gap-4">
+                  <span className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2 rounded-xl font-bold text-lg">
+                    {roomsData.length}
+                  </span>
+                  
+                  {activeFiltersCount > 0 && (
+                    <button
+                      onClick={clearFilters}
+                      className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl font-bold text-sm transition-all duration-300 transform hover:scale-105"
+                    >
+                      CLEAR ALL
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* Active Filters Display - Traveloka Style */}
+              {activeFiltersCount > 0 && (
+                <div className="mt-6 flex flex-wrap gap-3">
+                  {filters.room_type && (
+                    <span className="inline-flex items-center bg-yellow-500 text-black px-4 py-2 rounded-xl text-sm font-bold shadow-lg">
+                      {filters.room_type}
+                      <button
+                        onClick={() => handleFilter({ ...filters, room_type: '' })}
+                        className="ml-3 hover:text-gray-700 transition-colors duration-200 font-black"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  )}
+                  
+                  {filters.capacity && (
+                    <span className="inline-flex items-center bg-yellow-500 text-black px-4 py-2 rounded-xl text-sm font-bold shadow-lg">
+                      Capacity: {filters.capacity}+
+                      <button
+                        onClick={() => handleFilter({ ...filters, capacity: '' })}
+                        className="ml-3 hover:text-gray-700 transition-colors duration-200 font-black"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  )}
+                  
+                  {(filters.min_price || filters.max_price) && (
+                    <span className="inline-flex items-center bg-yellow-500 text-black px-4 py-2 rounded-xl text-sm font-bold shadow-lg">
+                      {filters.min_price || '0'} - {filters.max_price || '∞'}
+                      <button
+                        onClick={() => handleFilter({ ...filters, min_price: '', max_price: '' })}
+                        className="ml-3 hover:text-gray-700 transition-colors duration-200 font-black"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  )}
+                  
+                  {filters.facilities.length > 0 && (
+                    <span className="inline-flex items-center bg-yellow-500 text-black px-4 py-2 rounded-xl text-sm font-bold shadow-lg">
+                      +{filters.facilities.length} Facilities
+                      <button
+                        onClick={() => handleFilter({ ...filters, facilities: [] })}
+                        className="ml-3 hover:text-gray-700 transition-colors duration-200 font-black"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Active Filters Display */}
-            {activeFiltersCount > 0 && (
-              <div className="mb-6 flex flex-wrap gap-2">
-                {filters.room_type && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    Type: {filters.room_type}
-                    <button
-                      onClick={() => handleFilter({ ...filters, room_type: '' })}
-                      className="ml-2 hover:text-blue-600"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                )}
-                
-                {filters.capacity && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    Capacity: {filters.capacity}+
-                    <button
-                      onClick={() => handleFilter({ ...filters, capacity: '' })}
-                      className="ml-2 hover:text-green-600"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                )}
-                
-                {(filters.min_price || filters.max_price) && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                    Price: {filters.min_price || '0'} - {filters.max_price || 'Any'}
-                    <button
-                      onClick={() => handleFilter({ ...filters, min_price: '', max_price: '' })}
-                      className="ml-2 hover:text-purple-600"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                )}
-                
-                {filters.facilities.length > 0 && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                    Facilities: {filters.facilities.length}
-                    <button
-                      onClick={() => handleFilter({ ...filters, facilities: [] })}
-                      className="ml-2 hover:text-yellow-600"
-                    >
-                      ✕
-                    </button>
-                  </span>
-                )}
-              </div>
-            )}
-
+            {/* Rooms Content */}
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -254,23 +327,25 @@ export const Home = () => {
                 ))}
               </div>
             ) : error ? (
-              <div className="text-center py-12">
-                <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg max-w-md mx-auto">
-                  <p className="font-semibold">Failed to load rooms</p>
-                  <p className="text-sm mt-1">Please try again later</p>
+              <div className="text-center py-16">
+                <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-8 py-12 rounded-2xl max-w-md mx-auto">
+                  <div className="text-4xl mb-4">⚠️</div>
+                  <p className="font-black text-xl mb-3">Failed to Load Rooms</p>
+                  <p className="text-sm mb-6 text-red-600 dark:text-red-400">Please check your connection</p>
                   <button
                     onClick={refetch}
-                    className="mt-3 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-300"
+                    className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105"
                   >
-                    Retry
+                    TRY AGAIN
                   </button>
                 </div>
               </div>
             ) : roomsData.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-600 text-yellow-700 dark:text-yellow-200 px-4 py-3 rounded-lg max-w-md mx-auto">
-                  <p className="font-semibold">No rooms found</p>
-                  <p className="text-sm mt-1">
+              <div className="text-center py-16">
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300 px-8 py-12 rounded-2xl max-w-md mx-auto">
+                  <div className="text-4xl mb-4">🔍</div>
+                  <p className="font-black text-xl mb-3">No Rooms Available</p>
+                  <p className="text-sm mb-6 text-yellow-600 dark:text-yellow-400">
                     {activeFiltersCount > 0 
                       ? 'Try adjusting your filters' 
                       : 'All rooms are currently booked'
@@ -279,9 +354,9 @@ export const Home = () => {
                   {activeFiltersCount > 0 && (
                     <button
                       onClick={clearFilters}
-                      className="mt-3 bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-300"
+                      className="bg-yellow-500 hover:bg-yellow-400 text-black px-8 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105"
                     >
-                      Clear all filters
+                      CLEAR FILTERS
                     </button>
                   )}
                 </div>
@@ -296,79 +371,112 @@ export const Home = () => {
           </div>
         </div>
 
-        {/* Hotel Image Gallery Section */}
-        <div className="mt-16 bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-            <div>
-              <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
-                Why Choose Our Hotel?
-              </h3>
-              <ul className="space-y-3 text-gray-600 dark:text-gray-300">
-                <li className="flex items-center">
-                  <span className="text-gold-500 mr-3">✓</span>
-                  Luxurious rooms with premium amenities
-                </li>
-                <li className="flex items-center">
-                  <span className="text-gold-500 mr-3">✓</span>
-                  24/7 concierge service
-                </li>
-                <li className="flex items-center">
-                  <span className="text-gold-500 mr-3">✓</span>
-                  Free high-speed WiFi
-                </li>
-                <li className="flex items-center">
-                  <span className="text-gold-500 mr-3">✓</span>
-                  Complimentary breakfast
-                </li>
-                <li className="flex items-center">
-                  <span className="text-gold-500 mr-3">✓</span>
-                  Central location near attractions
-                </li>
-              </ul>
+        {/* Hotel Gallery Section - Traveloka Style */}
+        <div className="bg-gradient-to-br from-gray-900 to-black rounded-3xl shadow-2xl overflow-hidden mb-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+            <div className="p-12 flex flex-col justify-center">
+              <div className="mb-8">
+                <div className="bg-yellow-500 text-black px-4 py-2 rounded-full text-sm font-bold inline-block mb-6">
+                  WHY CHOOSE US
+                </div>
+                <h3 className="text-4xl font-black text-white mb-6 leading-tight">
+                  Experience The <span className="text-yellow-500">Difference</span>
+                </h3>
+                <p className="text-gray-300 text-lg mb-8">
+                  Discover why travelers choose Grand Imperion for their luxury stays
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="flex items-center bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-yellow-500/20">
+                  <div className="bg-yellow-500 text-black p-3 rounded-2xl mr-4">⭐</div>
+                  <div>
+                    <h4 className="font-black text-white text-lg">Premium Service</h4>
+                    <p className="text-gray-400 text-sm">24/7 personalized concierge</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-yellow-500/20">
+                  <div className="bg-yellow-500 text-black p-3 rounded-2xl mr-4">🏙️</div>
+                  <div>
+                    <h4 className="font-black text-white text-lg">Prime Location</h4>
+                    <p className="text-gray-400 text-sm">Heart of the city center</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-yellow-500/20">
+                  <div className="bg-yellow-500 text-black p-3 rounded-2xl mr-4">💎</div>
+                  <div>
+                    <h4 className="font-black text-white text-lg">Luxury Amenities</h4>
+                    <p className="text-gray-400 text-sm">World-class facilities</p>
+                  </div>
+                </div>
+              </div>
             </div>
             
-            {/* Image Gallery */}
+            {/* Enhanced Gallery */}
             <div className="relative">
-              <div className="bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden h-64">
+              <div className="relative h-full min-h-[500px]">
                 <img 
                   src={hotelImages[currentImageIndex]} 
-                  alt="Hotel Gallery" 
-                  className="w-full h-full object-cover transition-opacity duration-500"
+                  alt="Grand Imperion Luxury" 
+                  className="w-full h-full object-cover"
                   onError={(e) => {
-                    e.target.src = '/placeholder-hotel.jpg' // Fallback image
+                    e.target.src = '/placeholder-hotel.jpg'
                   }}
                 />
-              </div>
-              
-              {/* Navigation Buttons */}
-              <button 
-                onClick={prevImage}
-                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-300"
-              >
-                ‹
-              </button>
-              <button 
-                onClick={nextImage}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-300"
-              >
-                ›
-              </button>
-              
-              {/* Image Indicators */}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                {hotelImages.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                      index === currentImageIndex 
-                        ? 'bg-white' 
-                        : 'bg-white bg-opacity-50'
-                    }`}
-                  />
-                ))}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                
+                {/* Navigation */}
+                <button 
+                  onClick={prevImage}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/90 text-yellow-500 p-3 rounded-2xl transition-all duration-300 hover:scale-110"
+                >
+                  <span className="text-2xl font-bold">‹</span>
+                </button>
+                <button 
+                  onClick={nextImage}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/70 hover:bg-black/90 text-yellow-500 p-3 rounded-2xl transition-all duration-300 hover:scale-110"
+                >
+                  <span className="text-2xl font-bold">›</span>
+                </button>
+                
+                {/* Indicators */}
+                <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-3">
+                  {hotelImages.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                        index === currentImageIndex 
+                          ? 'bg-yellow-500 scale-125' 
+                          : 'bg-white/50 hover:bg-white/80'
+                      }`}
+                    />
+                  ))}
+                </div>
+                
+                {/* Counter */}
+                <div className="absolute top-6 right-6 bg-black/70 text-yellow-500 px-3 py-2 rounded-2xl text-sm font-bold">
+                  {currentImageIndex + 1} / {hotelImages.length}
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Bottom CTA */}
+        <div className="text-center mb-16">
+          <div className="bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-3xl p-12 shadow-2xl">
+            <h3 className="text-3xl font-black text-black mb-4">
+              Ready to Experience Luxury?
+            </h3>
+            <p className="text-black/80 text-lg mb-8 max-w-2xl mx-auto">
+              Book your stay now and enjoy exclusive benefits with our premium membership
+            </p>
+            <button className="bg-black hover:bg-gray-900 text-yellow-500 font-black px-12 py-4 rounded-2xl text-lg transition-all duration-300 transform hover:scale-105 shadow-2xl">
+              BOOK YOUR STAY NOW
+            </button>
           </div>
         </div>
       </div>
