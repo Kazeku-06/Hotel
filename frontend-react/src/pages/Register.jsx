@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 export const Register = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { register: registerUser } = useAuth()
+  const { register: registerUser } = useAuth() // ✅ Sekarang sudah ada
   const navigate = useNavigate()
 
   const { register, handleSubmit, formState: { errors }, watch } = useForm()
@@ -16,15 +16,20 @@ export const Register = () => {
     setLoading(true)
     setError('')
 
-    const result = await registerUser(data)
+    try {
+      const result = await registerUser(data)
 
-    if (result.success) {
-      navigate('/')
-    } else {
-      setError(result.message)
+      if (result.success) {
+        navigate('/')
+      } else {
+        setError(result.message)
+      }
+    } catch (error) {
+      console.error('Registration error:', error)
+      setError('Registration failed. Please try again.')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (

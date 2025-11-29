@@ -27,19 +27,16 @@ export const AuthProvider = ({ children }) => {
           return
         }
 
-        // Jika ada savedUser, gunakan dulu untuk immediate UI
         if (savedUser) {
           const parsedUser = JSON.parse(savedUser)
           console.log('📋 Saved user from localStorage:', parsedUser)
           setUser(parsedUser)
         }
 
-        // Always verify token with backend untuk mendapatkan data LENGKAP
         const response = await authAPI.getMe()
         const verifiedUser = response.data
         console.log('✅ Verified user from API:', verifiedUser)
         
-        // UPDATE: Simpan user lengkap (dengan phone)
         setUser(verifiedUser)
         localStorage.setItem('user', JSON.stringify(verifiedUser))
       } catch (error) {
@@ -55,6 +52,49 @@ export const AuthProvider = ({ children }) => {
 
     checkAuth()
   }, [])
+
+  const register = async (userData) => {
+    try {
+      setLoading(true)
+      
+      // Hapus confirmPassword sebelum dikirim ke API
+      const { confirmPassword, ...registrationData } = userData
+      
+      console.log('📤 Sending registration data:', registrationData)
+      
+      const response = await authAPI.register(registrationData)
+      const { access_token, user } = response.data
+
+      console.log('✅ Register successful, user data:', user)
+
+      localStorage.setItem('token', access_token)
+      localStorage.setItem('user', JSON.stringify(user))
+      setUser(user)
+
+      return { success: true }
+    } catch (error) {
+      console.error('❌ Registration error:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data
+      })
+      
+      let errorMessage = 'Registration failed. Please try again.'
+      
+      if (error.code === 'ERR_NETWORK') {
+        errorMessage = 'Cannot connect to server. Please check if the backend is running.'
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      }
+      
+      return { 
+        success: false, 
+        message: errorMessage
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const login = async (email, password) => {
     try {
@@ -85,6 +125,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     login,
+    register,
     logout,
     loading,
     isAuthenticated: !!user && !!localStorage.getItem('token'),

@@ -16,9 +16,19 @@ const StatsSkeleton = () => (
 );
 
 const AdminDashboard = () => {
-  const { data: stats, isLoading: statsLoading, error: statsError } = useDashboardStats();
+  const { 
+    data: stats, 
+    isLoading: statsLoading, 
+    error: statsError,
+    isError 
+  } = useDashboardStats();
 
-  // Data statistik dengan nilai real dari API
+  // Debug data yang diterima
+  console.log('📊 Stats data in component:', stats);
+  console.log('🔄 Loading state:', statsLoading);
+  console.log('❌ Error state:', statsError);
+
+  // Data statistik dengan nilai real dari API dan fallback yang lebih aman
   const dashboardStats = [
     { 
       title: 'Total Rooms', 
@@ -50,12 +60,19 @@ const AdminDashboard = () => {
     }
   ];
 
-  if (statsError) {
+  // Tampilkan error dengan lebih detail
+  if (isError) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
         <div className="max-w-7xl mx-auto px-4">
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            <p>Error loading dashboard data: {statsError.message}</p>
+            <p className="font-bold">Error loading dashboard data</p>
+            <p>{statsError?.message || 'Unknown error occurred'}</p>
+            {statsError?.response && (
+              <p className="text-sm mt-2">
+                Status: {statsError.response.status} - {statsError.response.statusText}
+              </p>
+            )}
             <button 
               onClick={() => window.location.reload()} 
               className="mt-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
@@ -243,34 +260,34 @@ const AdminDashboard = () => {
               </Link>
             </div>
 
-            {/* Additional Quick Stats */}
-            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
-                Quick Stats
-              </h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-gray-400">Available Rooms:</span>
-                  <span className="font-semibold text-gray-800 dark:text-white">
-                    {stats ? (stats.total_rooms - stats.active_bookings) : 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-gray-400">Monthly Revenue:</span>
-                  <span className="font-semibold text-gray-800 dark:text-white">
-                    {stats?.revenue ? `Rp ${stats.revenue.toLocaleString()}` : 'Rp 0'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-gray-400">Avg Stay Duration:</span>
-                  <span className="font-semibold text-gray-800 dark:text-white">3.2 days</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 dark:text-gray-400">Repeat Guests:</span>
-                  <span className="font-semibold text-gray-800 dark:text-white">42%</span>
-                </div>
-              </div>
-            </div>
+{/* Additional Quick Stats */}
+<div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">
+    Quick Stats
+  </h3>
+  <div className="grid grid-cols-2 gap-3 text-sm">
+    <div className="flex justify-between items-center">
+      <span className="text-gray-600 dark:text-gray-400">Available Rooms:</span>
+      <span className="font-semibold text-gray-800 dark:text-white">
+        {stats?.available_rooms || 0}
+      </span>
+    </div>
+    <div className="flex justify-between items-center">
+      <span className="text-gray-600 dark:text-gray-400">Monthly Revenue:</span>
+      <span className="font-semibold text-gray-800 dark:text-white">
+        {stats?.revenue ? `Rp ${stats.revenue.toLocaleString()}` : 'Rp 0'}
+      </span>
+    </div>
+    <div className="flex justify-between items-center">
+      <span className="text-gray-600 dark:text-gray-400">Avg Stay Duration:</span>
+      <span className="font-semibold text-gray-800 dark:text-white">3.2 days</span>
+    </div>
+    <div className="flex justify-between items-center">
+      <span className="text-gray-600 dark:text-gray-400">Repeat Guests:</span>
+      <span className="font-semibold text-gray-800 dark:text-white">42%</span>
+    </div>
+  </div>
+</div>
           </div>
         </div>
       </div>

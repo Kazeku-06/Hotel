@@ -27,8 +27,9 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
 
-# ✅ FIXED CORS Configuration - SIMPLE & EFFECTIVE
-CORS(app, origins=['http://localhost:3000'], supports_credentials=True)
+# ✅ SIMPLE & CLEAN CORS Configuration - HAPUS SEMUA YANG LAIN
+# ✅ FIXED CORS Configuration - GANTI dengan ini
+CORS(app)
 
 # Create upload directory
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -200,6 +201,11 @@ def get_dashboard_stats():
             Booking.status.in_(['checked_in', 'checked_out'])
         ).count()
 
+        total_reviews = Rating.query.count()
+        
+        avg_rating_result = db.session.query(db.func.avg(Rating.star)).scalar()
+        average_rating = float(avg_rating_result) if avg_rating_result else 0.0
+
         stats_data = {
             'total_bookings': total_bookings,
             'total_rooms': total_rooms,
@@ -207,7 +213,10 @@ def get_dashboard_stats():
             'total_revenue': total_revenue,
             'pending_bookings': pending_bookings,
             'today_checkins': today_checkins,
-            'today_checkouts': today_checkouts
+            'today_checkouts': today_checkouts,
+            'total_reviews': total_reviews,
+            'user_reviews': total_reviews,
+            'average_rating': average_rating
         }
 
         return jsonify({
@@ -251,6 +260,56 @@ def login():
             
     except Exception as e:
         return jsonify({'message': str(e)}), 400
+    
+# ==== AUTH REGISTER ROUTE ====
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    try:
+        data = request.get_json()
+        
+        required_fields = ['name', 'email', 'password', 'phone']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'message': f'Missing required field: {field}'}), 400
+        
+        # Check if user already exists
+        if User.query.filter_by(email=data['email']).first():
+            return jsonify({'message': 'User already exists with this email'}), 400
+        
+        # Validate password length
+        if len(data['password']) < 6:
+            return jsonify({'message': 'Password must be at least 6 characters'}), 400
+        
+        # Create new user
+        user = User(
+            name=data['name'],
+            email=data['email'],
+            phone=data['phone'],
+            role='member'  # Default role
+        )
+        user.set_password(data['password'])
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        # Create access token
+        access_token = create_access_token(identity=user.id)
+        
+        return jsonify({
+            'access_token': access_token,
+            'user': {
+                'id': user.id,
+                'name': user.name,
+                'email': user.email,
+                'phone': user.phone,
+                'role': user.role
+            }
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ ERROR in register: {str(e)}")
+        return jsonify({'message': str(e)}), 400    
 
 # ==== AUTH ME ROUTE ====
 @app.route('/api/auth/me', methods=['GET'])
@@ -1368,106 +1427,6 @@ def delete_room_photo(room_id, photo_id):
 def serve_uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# Seed sample data
-def seed_data():
-    try:
-        if not User.query.filter_by(email='admin@hotel.com').first():
-            admin = User(
-                name='Admin User',
-                email='admin@hotel.com',
-                role='admin'
-            )
-            admin.set_password('admin123')
-            db.session.add(admin)
-            print("✅ Admin user created")
-
-        facilities_data = [
-            {'name': 'WiFi', 'icon': '📶'},
-            {'name': 'AC', 'icon': '❄️'},
-            {'name': 'TV', 'icon': '📺'},
-            {'name': 'Breakfast', 'icon': '🍳'},
-            {'name': 'Swimming Pool', 'icon': '🏊'},
-            {'name': 'Parking', 'icon': '🅿️'},
-            {'name': 'Gym', 'icon': '💪'},
-            {'name': 'Spa', 'icon': '💆'},
-        ]
-        
-        facilities = []
-        for facility_data in facilities_data:
-            if not Facility.query.filter_by(name=facility_data['name']).first():
-                facility = Facility(**facility_data)
-                db.session.add(facility)
-                facilities.append(facility)
-                print(f"✅ Facility {facility_data['name']} created")
-
-        room_types_data = [
-            {'name': 'Standard', 'description': 'Comfortable standard room'},
-            {'name': 'Deluxe', 'description': 'Spacious deluxe room'},
-            {'name': 'Suite', 'description': 'Luxury suite with extra amenities'}
-        ]
-        
-        room_types = []
-        for rt_data in room_types_data:
-            if not RoomType.query.filter_by(name=rt_data['name']).first():
-                rt = RoomType(**rt_data)
-                db.session.add(rt)
-                room_types.append(rt)
-                print(f"✅ Room type {rt_data['name']} created")
-        
-        db.session.commit()
-
-        if not Room.query.first():
-            rooms_data = [
-                {
-                    'room_type_id': room_types[0].id,
-                    'room_number': '101',
-                    'capacity': 2,
-                    'price_no_breakfast': 500000,
-                    'price_with_breakfast': 600000,
-                    'description': 'Standard room with city view',
-                    'facilities': [facilities[0], facilities[1], facilities[2]]
-                },
-                {
-                    'room_type_id': room_types[1].id,
-                    'room_number': '201',
-                    'capacity': 3,
-                    'price_no_breakfast': 800000,
-                    'price_with_breakfast': 900000,
-                    'description': 'Deluxe room with balcony',
-                    'facilities': [facilities[0], facilities[1], facilities[2], facilities[3]]
-                },
-                {
-                    'room_type_id': room_types[2].id,
-                    'room_number': '301',
-                    'capacity': 4,
-                    'price_no_breakfast': 1200000,
-                    'price_with_breakfast': 1400000,
-                    'description': 'Luxury suite with jacuzzi',
-                    'facilities': facilities
-                }
-            ]
-            
-            for room_data in rooms_data:
-                room_facilities = room_data.pop('facilities', [])
-                room = Room(**room_data)
-                db.session.add(room)
-                db.session.flush()
-                
-                for facility in room_facilities:
-                    room_facility = FacilityRoom(
-                        room_id=room.id,
-                        facility_id=facility.id
-                    )
-                    db.session.add(room_facility)
-                
-                print(f"✅ Room {room_data['room_number']} created with {len(room_facilities)} facilities")
-            
-            db.session.commit()
-            
-    except Exception as e:
-        print(f"❌ Error seeding data: {e}")
-        db.session.rollback()
-
 if __name__ == '__main__':
     with app.app_context():
         try:
@@ -1498,10 +1457,6 @@ if __name__ == '__main__':
             except Exception as migration_error:
                 print(f"❌ Migration failed: {migration_error}")
                 print("⚠️ Continuing without migration...")
-            
-            print("🌱 Seeding sample data...")
-            seed_data()
-            print("✅ Sample data seeded!")
             
         except Exception as e:
             print(f"❌ Error: {e}")
