@@ -4,10 +4,8 @@ const API_BASE_URL = 'http://localhost:5000/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
   withCredentials: true, // ✅ Important for CORS with credentials
+  timeout: 10000,
 })
 
 // Request interceptor to add auth token
@@ -25,8 +23,10 @@ api.interceptors.request.use(
       console.log('🔑 Token attached to request')
     }
     
-    // Add CORS headers for all requests
-    config.headers['X-Requested-With'] = 'XMLHttpRequest'
+    // Ensure Content-Type is set
+    if (!config.headers['Content-Type']) {
+      config.headers['Content-Type'] = 'application/json'
+    }
     
     return config
   },
@@ -64,6 +64,7 @@ api.interceptors.response.use(
     // Handle CORS errors specifically
     if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
       console.error('🌐 Network/CORS Error - Check if backend is running and CORS configured')
+      console.error('💡 Solution: Make sure backend is running on port 5000 and CORS is properly configured')
     }
     
     return Promise.reject(error)

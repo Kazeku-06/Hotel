@@ -1,4 +1,4 @@
-# single_app.py - FOR LARAGON (FIXED CORS COMPLETE SOLUTION)
+# single_app.py - FIXED CORS COMPLETE SOLUTION
 import os
 import uuid
 from datetime import datetime
@@ -27,10 +27,29 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 jwt = JWTManager(app)
 
-# ✅ SIMPLE & CLEAN CORS Configuration - HAPUS SEMUA YANG LAIN
-# ✅ FIXED CORS Configuration - GANTI dengan ini
-CORS(app)
+# ✅ FIXED CORS Configuration - SOLUSI UTAMA
+# Configure CORS explicitly for API routes and allow credentials
+ALLOWED_ORIGINS = ["http://localhost:3000"]
 
+# Use flask-cors with explicit resources for /api/* and enable credentials
+CORS(app,
+     resources={r"/api/*": {"origins": ALLOWED_ORIGINS}},
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization"],
+     expose_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+
+
+# Ensure preflight and all responses include the required CORS headers
+@app.after_request
+def add_cors_headers(response):
+    origin = request.headers.get('Origin')
+    if origin and origin in ALLOWED_ORIGINS:
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    return response
 # Create upload directory
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'rooms'), exist_ok=True)
@@ -167,73 +186,12 @@ class Rating(db.Model):
 def home():
     return jsonify({'message': 'Hotel API is running!', 'database': 'MySQL with Laragon'})
 
-# ==== DASHBOARD STATS ROUTES ====
-@app.route('/api/admin/dashboard/stats', methods=['GET'])
-@jwt_required()
-def get_dashboard_stats():
-    """Endpoint untuk dashboard statistics"""
-    try:
-        current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
-        
-        if not user or user.role != 'admin':
-            return jsonify({'message': 'Admin access required'}), 403
-
-        total_bookings = Booking.query.count()
-        total_rooms = Room.query.count()
-        available_rooms = Room.query.filter_by(status='available').count()
-        
-        revenue_result = db.session.query(db.func.sum(Booking.total_price)).filter(
-            Booking.status.in_(['checked_out', 'confirmed'])
-        ).scalar()
-        total_revenue = float(revenue_result) if revenue_result else 0.0
-        
-        pending_bookings = Booking.query.filter_by(status='pending').count()
-        
-        today = datetime.now().date()
-        today_checkins = Booking.query.filter(
-            Booking.check_in == today,
-            Booking.status.in_(['confirmed', 'checked_in'])
-        ).count()
-        
-        today_checkouts = Booking.query.filter(
-            Booking.check_out == today,
-            Booking.status.in_(['checked_in', 'checked_out'])
-        ).count()
-
-        total_reviews = Rating.query.count()
-        
-        avg_rating_result = db.session.query(db.func.avg(Rating.star)).scalar()
-        average_rating = float(avg_rating_result) if avg_rating_result else 0.0
-
-        stats_data = {
-            'total_bookings': total_bookings,
-            'total_rooms': total_rooms,
-            'available_rooms': available_rooms,
-            'total_revenue': total_revenue,
-            'pending_bookings': pending_bookings,
-            'today_checkins': today_checkins,
-            'today_checkouts': today_checkouts,
-            'total_reviews': total_reviews,
-            'user_reviews': total_reviews,
-            'average_rating': average_rating
-        }
-
-        return jsonify({
-            'success': True,
-            'data': stats_data
-        }), 200
-        
-    except Exception as e:
-        print(f"❌ ERROR in get_dashboard_stats: {str(e)}")
-        return jsonify({
-            'success': False,
-            'message': str(e)
-        }), 500
-
+# ==== AUTH ROUTES ====
 @app.route('/api/auth/login', methods=['POST'])
+
 def login():
     try:
+            
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
@@ -263,8 +221,10 @@ def login():
     
 # ==== AUTH REGISTER ROUTE ====
 @app.route('/api/auth/register', methods=['POST'])
+
 def register():
     try:
+            
         data = request.get_json()
         
         required_fields = ['name', 'email', 'password', 'phone']
@@ -314,8 +274,10 @@ def register():
 # ==== AUTH ME ROUTE ====
 @app.route('/api/auth/me', methods=['GET'])
 @jwt_required()
+
 def get_current_user():
     try:
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -336,8 +298,10 @@ def get_current_user():
 
 # ==== FACILITY ROUTES ====
 @app.route('/api/facilities', methods=['GET'])
+
 def get_facilities():
     try:
+            
         facilities = Facility.query.all()
         result = []
         for facility in facilities:
@@ -353,8 +317,10 @@ def get_facilities():
 
 @app.route('/api/admin/facilities', methods=['GET', 'POST'])
 @jwt_required()
+
 def admin_facilities():
     try:
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -405,8 +371,10 @@ def admin_facilities():
 
 # ==== ROOM TYPE ROUTES ==== 
 @app.route('/api/room-types', methods=['GET'])
+
 def room_types():
     try:
+            
         room_types = RoomType.query.all()
         result = []
         for room_type in room_types:
@@ -432,8 +400,10 @@ def room_types():
 # ==== ADMIN ROOM TYPES ROUTES ====
 @app.route('/api/admin/room-types', methods=['GET', 'POST'])
 @jwt_required()
+
 def admin_room_types():
     try:
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -501,8 +471,10 @@ def admin_room_types():
 # ==== ROOM FACILITIES ROUTES ====
 @app.route('/api/admin/rooms/<room_id>/facilities', methods=['GET', 'POST', 'DELETE'])
 @jwt_required()
+
 def room_facilities(room_id):
     try:
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -585,8 +557,10 @@ def room_facilities(room_id):
 
 # ==== ROOM ROUTES ====
 @app.route('/api/rooms', methods=['GET'])
+
 def get_rooms():
     try:
+            
         # Get filter parameters from request
         room_type_filter = request.args.get('room_type', '').strip()
         min_price = request.args.get('min_price', type=float)
@@ -677,8 +651,10 @@ def get_rooms():
 
 # ==== Single Room Detail ====
 @app.route('/api/rooms/<room_id>', methods=['GET'])
+
 def get_room(room_id):
     try:
+            
         room = Room.query.get(room_id)
         if not room:
             return jsonify({'message': 'Room not found'}), 404
@@ -726,8 +702,10 @@ def get_room(room_id):
 # ==== RATINGS ROUTES ====
 @app.route('/api/ratings', methods=['GET', 'POST'])
 @jwt_required()
+
 def ratings():
     try:
+            
         current_user_id = get_jwt_identity()
         
         if request.method == 'GET':
@@ -812,8 +790,10 @@ def ratings():
 # Admin ratings endpoint
 @app.route('/api/admin/ratings', methods=['GET'])
 @jwt_required()
+
 def admin_ratings():
     try:
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -852,8 +832,10 @@ def admin_ratings():
 # ==== BOOKINGS ROUTES ====
 @app.route('/api/bookings', methods=['POST'])
 @jwt_required()
+
 def create_booking():
     try:
+            
         current_user_id = get_jwt_identity()
         data = request.get_json()
         
@@ -948,8 +930,10 @@ def create_booking():
 
 @app.route('/api/bookings/me', methods=['GET'])
 @jwt_required()
+
 def get_my_bookings():
     try:
+            
         current_user_id = get_jwt_identity()
         
         print(f"🔍 DEBUG - Current user ID: {current_user_id}")
@@ -1005,8 +989,10 @@ def get_my_bookings():
 # ==== ADMIN BOOKINGS ROUTES ====
 @app.route('/api/admin/bookings', methods=['GET'])
 @jwt_required()
+
 def get_all_bookings():
     try:
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -1059,8 +1045,10 @@ def get_all_bookings():
 
 @app.route('/api/admin/bookings/<booking_id>/status', methods=['PUT'])
 @jwt_required()
+
 def update_booking_status(booking_id):
     try:
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -1128,6 +1116,72 @@ def update_booking_status(booking_id):
             'message': str(e)
         }), 500
 
+# ==== DASHBOARD STATS ROUTES ====
+@app.route('/api/admin/dashboard/stats', methods=['GET'])
+@jwt_required()
+
+def get_dashboard_stats():
+    """Endpoint untuk dashboard statistics"""
+    try:
+            
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        total_bookings = Booking.query.count()
+        total_rooms = Room.query.count()
+        available_rooms = Room.query.filter_by(status='available').count()
+        
+        revenue_result = db.session.query(db.func.sum(Booking.total_price)).filter(
+            Booking.status.in_(['checked_out', 'confirmed'])
+        ).scalar()
+        total_revenue = float(revenue_result) if revenue_result else 0.0
+        
+        pending_bookings = Booking.query.filter_by(status='pending').count()
+        
+        today = datetime.now().date()
+        today_checkins = Booking.query.filter(
+            Booking.check_in == today,
+            Booking.status.in_(['confirmed', 'checked_in'])
+        ).count()
+        
+        today_checkouts = Booking.query.filter(
+            Booking.check_out == today,
+            Booking.status.in_(['checked_in', 'checked_out'])
+        ).count()
+
+        total_reviews = Rating.query.count()
+        
+        avg_rating_result = db.session.query(db.func.avg(Rating.star)).scalar()
+        average_rating = float(avg_rating_result) if avg_rating_result else 0.0
+
+        stats_data = {
+            'total_bookings': total_bookings,
+            'total_rooms': total_rooms,
+            'available_rooms': available_rooms,
+            'total_revenue': total_revenue,
+            'pending_bookings': pending_bookings,
+            'today_checkins': today_checkins,
+            'today_checkouts': today_checkouts,
+            'total_reviews': total_reviews,
+            'user_reviews': total_reviews,
+            'average_rating': average_rating
+        }
+
+        return jsonify({
+            'success': True,
+            'data': stats_data
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ ERROR in get_dashboard_stats: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
 # ==== ADMIN ROUTES ====
 # Allowed extensions for images
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -1138,8 +1192,10 @@ def allowed_file(filename):
 
 @app.route('/api/admin/rooms', methods=['GET', 'POST'])
 @jwt_required()
+
 def admin_rooms():
     try:
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -1280,8 +1336,10 @@ def admin_rooms():
 
 @app.route('/api/admin/rooms/<room_id>', methods=['PUT', 'DELETE'])
 @jwt_required()
+
 def admin_room_detail(room_id):
     try:
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -1401,8 +1459,10 @@ def admin_room_detail(room_id):
 
 @app.route('/api/admin/rooms/<room_id>/photos/<photo_id>', methods=['DELETE'])
 @jwt_required()
+
 def delete_room_photo(room_id, photo_id):
     try:
+            
         current_user_id = get_jwt_identity()
         user = User.query.get(current_user_id)
         
@@ -1424,6 +1484,7 @@ def delete_room_photo(room_id, photo_id):
         return jsonify({'message': str(e)}), 400
 
 @app.route('/uploads/<path:filename>')
+
 def serve_uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
@@ -1463,5 +1524,6 @@ if __name__ == '__main__':
     
     print("🚀 Server starting on http://localhost:5000")
     print("✅ CORS Enabled for: http://localhost:3000")
+    print("🔧 CORS Configuration: supports_credentials=True")
     
-    app.run(debug=True, port=5000, use_reloader=False)
+    app.run(debug=True, port=5000, use_reloader=False, host='0.0.0.0')
