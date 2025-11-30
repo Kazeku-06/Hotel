@@ -12,164 +12,61 @@ export const Navbar = () => {
   }
 
   return (
-    <nav className="bg-gradient-to-r from-gray-900 via-black to-gray-900 shadow-2xl border-b border-yellow-500/20 transition-all duration-300 sticky top-0 z-50">
+    <nav className="bg-white dark:bg-gray-800 shadow-lg border-b border-gray-200 dark:border-gray-700 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          {/* Logo/Brand */}
-          <Link to="/" className="flex items-center space-x-3 group">
-            <div className="bg-yellow-500 text-black p-3 rounded-2xl font-black text-xl group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-yellow-500/25">
-              🏨
-            </div>
-            <div>
-              <h1 className="text-2xl font-black bg-gradient-to-r from-yellow-500 to-yellow-400 bg-clip-text text-transparent">
-                GRAND IMPERION
-              </h1>
-              <p className="text-yellow-400 text-xs font-bold tracking-wider">
-                LUXURY HOTEL COLLECTION
-              </p>
-            </div>
+        <div className="flex justify-between items-center h-16">
+          <Link to="/" className="flex items-center space-x-2">
+            <span className="text-2xl font-bold text-gold-500">🏨 Grand Imperion</span>
           </Link>
 
-          {/* Navigation Items */}
-          <div className="flex items-center space-x-6">
-            {/* Theme Toggle */}
-            <div className="bg-white/5 backdrop-blur-sm border border-yellow-500/20 rounded-2xl p-1">
-              <ThemeToggle />
-            </div>
+          <div className="flex items-center space-x-4">
+            <ThemeToggle />
 
             {user ? (
               <>
-                {/* Admin/User Links */}
                 {isAdmin ? (
                   <Link 
                     to="/admin" 
-                    className="flex items-center space-x-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-500 px-6 py-3 rounded-2xl text-sm font-black transition-all duration-300 hover:scale-105 group"
+                    className="text-gray-700 dark:text-gray-300 hover:text-gold-500 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
                   >
-                    <span>👑</span>
-                    <span>ADMIN DASHBOARD</span>
+                    Admin Dashboard
                   </Link>
                 ) : (
                   <Link 
                     to="/my-bookings" 
-                    className="flex items-center space-x-2 text-white hover:text-yellow-500 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 group"
+                    className="text-gray-700 dark:text-gray-300 hover:text-gold-500 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-300"
                   >
-                    <span className="text-lg">📋</span>
-                    <span className="group-hover:underline">MY BOOKINGS</span>
+                    My Bookings
                   </Link>
                 )}
-
-                {/* User Menu */}
-                <div className="flex items-center space-x-4 bg-white/5 backdrop-blur-sm border border-yellow-500/20 rounded-2xl pl-4 pr-2 py-2">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-yellow-500 text-black p-2 rounded-xl text-sm">
-                      👤
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white font-bold text-sm">{user.name}</p>
-                      <p className="text-yellow-400 text-xs font-semibold">
-                        {isAdmin ? 'ADMIN' : 'MEMBER'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="h-6 w-px bg-yellow-500/30"></div>
-                  
+                <div className="flex items-center space-x-3">
+                  <span className="text-gray-700 dark:text-gray-300 text-sm">
+                    Hello, {user.name}
+                  </span>
                   <button
                     onClick={handleLogout}
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl transition-all duration-300 transform hover:scale-105 text-sm font-bold flex items-center space-x-2"
+                    className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
                   >
-                    <span>🚪</span>
-                    <span>LOGOUT</span>
+                    Logout
                   </button>
                 </div>
               </>
             ) : (
-              /* Auth Buttons */
-              <div className="flex items-center space-x-4">
+              <div className="flex space-x-2">
                 <Link
                   to="/login"
-                  className="text-white hover:text-yellow-500 px-6 py-3 rounded-2xl text-sm font-bold transition-all duration-300 hover:scale-105 group flex items-center space-x-2 border border-white/10 hover:border-yellow-500/50"
+                  className="text-gray-700 dark:text-gray-300 hover:text-gold-500 px-4 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
                 >
-                  <span className="text-lg group-hover:scale-110 transition-transform">🔑</span>
-                  <span>SIGN IN</span>
+                  Login
                 </Link>
-                
                 <Link
                   to="/register"
-                  className="bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-400 hover:to-yellow-300 text-black px-8 py-3 rounded-2xl text-sm font-black transition-all duration-300 transform hover:scale-105 shadow-lg shadow-yellow-500/25 hover:shadow-xl hover:shadow-yellow-500/30 flex items-center space-x-2"
+                  className="bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg transition-colors duration-300 text-sm font-medium"
                 >
-                  <span className="text-lg">✨</span>
-                  <span>JOIN NOW</span>
+                  Register
                 </Link>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Secondary Navigation */}
-        <div className="border-t border-yellow-500/10 pt-4 pb-2">
-          <div className="flex justify-center items-center space-x-8">
-            <Link 
-              to="/rooms" 
-              className="text-gray-300 hover:text-yellow-500 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 hover:bg-white/5 group flex items-center space-x-2"
-            >
-              <span className="text-yellow-500 group-hover:scale-110 transition-transform">🛏️</span>
-              <span>ROOMS & SUITES</span>
-            </Link>
-            
-            <Link 
-              to="/facilities" 
-              className="text-gray-300 hover:text-yellow-500 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 hover:bg-white/5 group flex items-center space-x-2"
-            >
-              <span className="text-yellow-500 group-hover:scale-110 transition-transform">🏊</span>
-              <span>FACILITIES</span>
-            </Link>
-            
-            <Link 
-              to="/offers" 
-              className="text-gray-300 hover:text-yellow-500 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 hover:bg-white/5 group flex items-center space-x-2"
-            >
-              <span className="text-yellow-500 group-hover:scale-110 transition-transform">🎁</span>
-              <span>SPECIAL OFFERS</span>
-            </Link>
-            
-            <Link 
-              to="/gallery" 
-              className="text-gray-300 hover:text-yellow-500 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 hover:bg-white/5 group flex items-center space-x-2"
-            >
-              <span className="text-yellow-500 group-hover:scale-110 transition-transform">📸</span>
-              <span>GALLERY</span>
-            </Link>
-            
-            <Link 
-              to="/contact" 
-              className="text-gray-300 hover:text-yellow-500 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-300 hover:bg-white/5 group flex items-center space-x-2"
-            >
-              <span className="text-yellow-500 group-hover:scale-110 transition-transform">📞</span>
-              <span>CONTACT</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Promo Banner */}
-      <div className="bg-gradient-to-r from-yellow-500 to-yellow-400 text-black py-2">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-center items-center space-x-6 text-sm font-black">
-            <div className="flex items-center space-x-2">
-              <span>🏆</span>
-              <span>BEST LUXURY HOTEL 2024</span>
-            </div>
-            <div className="h-4 w-px bg-black/30"></div>
-            <div className="flex items-center space-x-2">
-              <span>⭐</span>
-              <span>5-STAR RATING</span>
-            </div>
-            <div className="h-4 w-px bg-black/30"></div>
-            <div className="flex items-center space-x-2">
-              <span>🎯</span>
-              <span>PRIME CITY CENTER LOCATION</span>
-            </div>
           </div>
         </div>
       </div>
