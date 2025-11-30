@@ -1,0 +1,12 @@
+# Environment variables
+.env
+.flaskenv
+
+# Uploaded files
+/uploads/
+
+# Python cache
+__pycache__/
+
+# Virtual environment
+venv/

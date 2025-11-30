@@ -1,247 +1,175 @@
-📚 API Documentation
-Base URL
-text
-http://localhost:5000
-Authentication
-All protected endpoints require JWT token in the Authorization header:
+# 🏨 Hotel Management System - Fullstack
 
-text
-Authorization: Bearer <your_jwt_token>
-🔐 AUTHENTICATION ENDPOINTS
-POST /api/auth/login
-Login user
+This is a full-stack hotel management system with a React frontend and a Flask backend.
 
-Body: { "email": "user@example.com", "password": "password" }
+## ✨ Features
 
-Response: { "access_token": "jwt_token", "user": { ... } }
+*   User registration and authentication (JWT-based)
+*   Room browsing and filtering
+*   Room booking
+*   Admin dashboard for managing rooms, bookings, and ratings
+*   Image uploads for room photos
+*   User roles (member and admin)
 
-GET /api/auth/me
-Get current user profile
+## 🛠️ Tech Stack
 
-Headers: Authorization: Bearer <token>
+### Backend (Flask)
 
-Response: { "id": "...", "name": "...", "email": "...", "role": "..." }
+*   Flask
+*   Flask-SQLAlchemy
+*   Flask-Migrate
+*   Flask-JWT-Extended
+*   Flask-CORS
+*   PyMySQL
+*   python-dotenv
 
-🏨 ROOM ENDPOINTS
-GET /api/rooms
-Get all available rooms with filtering
+### Frontend (React)
 
-Query Parameters:
-
-room_type - Filter by room type name
-
-min_price - Minimum price filter
-
-max_price - Maximum price filter
-
-capacity - Minimum capacity filter
-
-facilities[] - Array of facility IDs
-
-Response: Array of room objects with photos and facilities
-
-GET /api/rooms/{room_id}
-Get single room details
-
-Response: Complete room object with photos, facilities, and room type
-
-📋 ROOM TYPES ENDPOINTS
-GET /api/room-types
-Get all room types
-
-Response: { "success": true, "data": [...], "count": 0 }
-
-⭐ RATINGS ENDPOINTS
-GET /api/ratings
-Get all ratings (Protected)
-
-Headers: Authorization: Bearer <token>
-
-Response: Array of rating objects with user info
-
-POST /api/ratings
-Submit a rating (Protected)
-
-Headers: Authorization: Bearer <token>
-
-Body: { "booking_id": "...", "star": 5, "comment": "..." }
-
-Response: { "success": true, "message": "Rating submitted" }
-
-🛎️ FACILITIES ENDPOINTS
-GET /api/facilities
-Get all facilities
-
-Response: Array of facility objects
-
-📖 BOOKING ENDPOINTS
-POST /api/bookings
-Create a new booking (Protected)
-
-Headers: Authorization: Bearer <token>
-
-Body:
-
-json
-{
-  "nik": "123456789",
-  "guest_name": "John Doe",
-  "phone": "08123456789",
-  "check_in": "2024-01-01",
-  "check_out": "2024-01-03",
-  "total_guests": 2,
-  "payment_method": "credit_card",
-  "rooms": [
-    {
-      "room_id": "room-uuid",
-      "quantity": 1,
-      "breakfast_option": "with"
-    }
-  ]
-}
-GET /api/bookings/me
-Get user's bookings (Protected)
-
-Headers: Authorization: Bearer <token>
-
-Response: Array of booking objects with room details
-
-👑 ADMIN ENDPOINTS
-GET /api/admin/dashboard/stats
-Get dashboard statistics (Admin only)
-
-Headers: Authorization: Bearer <token>
-
-Response: Statistics data including bookings, revenue, rooms, etc.
-
-ROOM MANAGEMENT
-GET /api/admin/rooms
-Get all rooms (Admin only)
-
-Response: Complete room data for admin
-
-POST /api/admin/rooms
-Create new room (Admin only)
-
-Headers: Authorization: Bearer <token>
-
-Content-Type: multipart/form-data or application/json
-
-Body: Room data with optional photos and facilities
-
-PUT /api/admin/rooms/{room_id}
-Update room (Admin only)
-
-Headers: Authorization: Bearer <token>
-
-Body: Updated room data
-
-DELETE /api/admin/rooms/{room_id}
-Delete room (Admin only)
-
-Headers: Authorization: Bearer <token>
-
-DELETE /api/admin/rooms/{room_id}/photos/{photo_id}
-Delete room photo (Admin only)
-
-ROOM TYPE MANAGEMENT
-GET /api/admin/room-types
-Get all room types (Admin only)
-
-Response: Room types with room counts
-
-POST /api/admin/room-types
-Create new room type (Admin only)
-
-Body: { "name": "Deluxe", "description": "..." }
-
-FACILITY MANAGEMENT
-GET /api/admin/facilities
-Get all facilities (Admin only)
-
-POST /api/admin/facilities
-Create new facility (Admin only)
-
-Body: { "name": "WiFi", "icon": "📶" }
-
-ROOM FACILITIES MANAGEMENT
-GET /api/admin/rooms/{room_id}/facilities
-Get room facilities (Admin only)
-
-POST /api/admin/rooms/{room_id}/facilities
-Add facility to room (Admin only)
-
-Body: { "facility_id": "..." }
-
-DELETE /api/admin/rooms/{room_id}/facilities?facility_id={id}
-Remove facility from room (Admin only)
-
-BOOKING MANAGEMENT
-GET /api/admin/bookings
-Get all bookings (Admin only)
-
-Response: All bookings in the system
-
-PUT /api/admin/bookings/{booking_id}/status
-Update booking status (Admin only)
-
-Body: { "status": "confirmed" }
-
-Valid statuses: pending, confirmed, checked_in, checked_out, cancelled
-
-RATING MANAGEMENT
-GET /api/admin/ratings
-Get all ratings (Admin only)
-
-Response: All ratings with user information
-
-📁 FILE UPLOADS
-GET /uploads/{filename}
-Serve uploaded files
-
-Used for room photos and other uploaded content
-
-🛠️ SETUP INSTRUCTIONS
-Prerequisites
-Python 3.7+
-
-MySQL with Laragon
-
-Required packages: flask, flask-sqlalchemy, flask-jwt-extended, flask-cors, flask-migrate, pymysql, python-dotenv
-
-Installation
-Clone the repository
-
-Install dependencies: pip install -r requirements.txt
-
-Create MySQL database named hotel_db
-
-Run the application: python single_app.py
-
-The API will be available at http://localhost:5000
-
-Database Setup
-The application will automatically create tables and run necessary migrations on first run.
-
-CORS Configuration
-CORS is configured to allow requests from http://localhost:3000 for frontend development.
-
-🔧 ENVIRONMENT VARIABLES
-Create a .env file with:
-
-env
-SECRET_KEY=your-secret-key-here
-JWT_SECRET_KEY=your-jwt-secret-key-here
-If not provided, default development keys will be used.
-
-📝 NOTES
-All admin endpoints require user role to be admin
-
-JWT tokens are required for protected endpoints
-
-File uploads are limited to 16MB and allowed formats: png, jpg, jpeg, gif, webp
-
-The API uses UUIDs for all primary keys
-
-MySQL database connection uses Laragon default credentials
-
+*   React
+*   React Router
+*   Axios
+*   Tailwind CSS
+*   Vite
+
+## ✍️ Author
+
+*   **GitHub:** [Kazeku-06](https://github.com/Kazeku-06)
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+*   Python 3.10+
+*   Node.js 16+
+*   MySQL
+
+### 📦 Installation
+
+1.  **Clone the repository:**
+
+    ```bash
+    git clone https://github.com/Kazeku-06/Hotel.git
+    cd hotel
+    ```
+
+2.  **Backend Setup (Flask):**
+
+    ```bash
+    cd backend-flask
+    python -m venv venv
+    # On Windows
+    venv\Scripts\activate
+    # On macOS/Linux
+    source venv/bin/activate
+    pip install -r requirements.txt
+    ```
+
+    Create a `.env` file in the `backend-flask` directory and add the following:
+
+    ```env
+    FLASK_APP=run.py
+    FLASK_ENV=development
+    SECRET_KEY=your-super-secret-key
+    JWT_SECRET_KEY=your-jwt-secret-key
+    SQLALCHEMY_DATABASE_URI=mysql+pymysql://user:password@localhost/hotel_db
+    UPLOAD_FOLDER=uploads
+    ```
+
+    Initialize the database:
+
+    ```bash
+    # these commands are not available in the project, you need to create them
+    # flask db init
+    # flask db migrate
+    # flask db upgrade
+    ```
+
+    Run the backend server:
+
+    ```bash
+    flask run
+    ```
+
+    The backend will be running at `http://127.0.0.1:5000`.
+
+3.  **Frontend Setup (React):**
+
+    ```bash
+    cd frontend-react
+    npm install
+    npm run dev
+    ```
+
+    The frontend development server will be running at `http://localhost:5173`.
+
+##  API Documentation
+
+### Auth (`/api/auth`)
+
+*   **POST `/register`**
+    *   **Description:** Registers a new user.
+    *   **Request Body:**
+        ```json
+        {
+          "name": "John Doe",
+          "email": "john.doe@example.com",
+          "password": "password123",
+          "phone": "1234567890"
+        }
+        ```
+    *   **Response:**
+        *   `201 Created`: User registered successfully.
+        *   `400 Bad Request`: If email already exists or data is invalid.
+
+*   **POST `/login`**
+    *   **Description:** Logs in a user and returns a JWT token.
+    *   **Request Body:**
+        ```json
+        {
+          "email": "john.doe@example.com",
+          "password": "password123"
+        }
+        ```
+    *   **Response:**
+        *   `200 OK`: Returns access token and user info.
+        *   `401 Unauthorized`: Invalid credentials.
+
+*   **GET `/me`**
+    *   **Description:** Gets the currently authenticated user's information.
+    *   **Requires:** Authentication (JWT Token).
+    *   **Response:**
+        *   `200 OK`: Returns user information.
+        *   `404 Not Found`: User not found.
+
+### Main (`/api`)
+
+*   **GET `/rooms`**
+    *   **Description:** Gets a list of available rooms. Can be filtered by `room_type`, `min_price`, `max_price`, and `capacity`.
+    *   **Query Parameters (Optional):**
+        *   `room_type` (integer)
+        *   `min_price` (float)
+        *   `max_price` (float)
+        *   `capacity` (integer)
+    *   **Response:**
+        *   `200 OK`: Returns a list of rooms.
+
+*   **GET `/rooms/<room_id>`**
+    *   **Description:** Gets the details of a specific room.
+    *   **Response:**
+        *   `200 OK`: Returns room details.
+        *   `404 Not Found`: Room not found.
+
+### Admin (`/api/admin`)
+
+*All admin routes require an admin role and JWT authentication.*
+
+*   **GET `/room-types`**: Get all room types.
+*   **GET `/rooms`**: Get all rooms (not just available ones).
+*   **POST `/rooms`**: Create a new room.
+*   **PUT `/rooms/<room_id>`**: Update a room.
+*   **DELETE `/rooms/<room_id>`**: Delete a room.
+*   **POST `/rooms/<room_id>/photos`**: Upload photos for a room.
+*   **DELETE `/room-photos/<photo_id>`**: Delete a room photo.
+*   **GET `/bookings`**: Get all bookings.
+*   **PUT `/bookings/<booking_id>/status`**: Update the status of a booking.
+*   **GET `/ratings`**: Get all ratings.
