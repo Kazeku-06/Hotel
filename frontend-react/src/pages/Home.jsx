@@ -95,66 +95,59 @@ export const Home = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Hero Section */}
-        <div className="text-center mb-16 relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-gold-500/10 rounded-3xl blur-3xl -z-10"></div>
-          <h1 className="text-5xl md:text-7xl font-bold text-gray-800 dark:text-white mb-6 leading-tight">
-            Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-500 to-yellow-300">Grand Imperion</span>
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-6xl font-bold text-gray-800 dark:text-white mb-6">
+            Welcome to <span className="text-gold-500">Grand Imperion</span>
           </h1>
-          <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Experience unparalleled comfort and luxury in the heart of the city. 
-            Where every stay becomes a cherished memory.
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-8">
+            Experience unparalleled comfort and luxury in the heart of the city
           </p>
 
-          <div className="flex flex-wrap justify-center gap-4 mb-12">
-            <div className="bg-gradient-to-r from-gold-500 to-yellow-400 text-white px-8 py-4 rounded-2xl font-semibold shadow-lg shadow-gold-500/25 hover:shadow-xl hover:shadow-gold-500/30 transition-all duration-300 transform hover:-translate-y-1">
+          <div className="flex flex-wrap justify-center gap-4">
+            <div className="bg-gold-500 text-white px-6 py-3 rounded-lg font-semibold">
               🏆 Best Service Award 2024
             </div>
-            <div className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white px-8 py-4 rounded-2xl font-semibold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-1">
-              ⭐ 5-Star Luxury Rating
+            <div className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold">
+              ⭐ 5-Star Rating
             </div>
-            <div className="bg-gradient-to-r from-emerald-500 to-green-400 text-white px-8 py-4 rounded-2xl font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 transition-all duration-300 transform hover:-translate-y-1">
-              📍 Prime City Center Location
+            <div className="bg-green-500 text-white px-6 py-3 rounded-lg font-semibold">
+              📍 Prime Location
             </div>
           </div>
         </div>
 
         {/* Hotel Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          <div className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 p-8 text-center border border-gray-100 dark:border-gray-700 hover:border-gold-200 dark:hover:border-gold-800 transform hover:-translate-y-2">
-            <div className="text-4xl mb-4 transform group-hover:scale-110 transition-transform duration-300">🏊</div>
-            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-3">Infinity Pool</h3>
-            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">Stunning infinity pool with panoramic city views and luxury cabanas</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">
+            <div className="text-3xl mb-3">🏊</div>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Swimming Pool</h3>
+            <p className="text-gray-600 dark:text-gray-300">Infinity pool with city view</p>
           </div>
-          <div className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 p-8 text-center border border-gray-100 dark:border-gray-700 hover:border-gold-200 dark:hover:border-gold-800 transform hover:-translate-y-2">
-            <div className="text-4xl mb-4 transform group-hover:scale-110 transition-transform duration-300">🍽️</div>
-            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-3">Fine Dining</h3>
-            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">Award-winning restaurants with world-class chefs and 24/7 room service</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">
+            <div className="text-3xl mb-3">🍽️</div>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Fine Dining</h3>
+            <p className="text-gray-600 dark:text-gray-300">5-star restaurant & room service</p>
           </div>
-          <div className="group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 p-8 text-center border border-gray-100 dark:border-gray-700 hover:border-gold-200 dark:hover:border-gold-800 transform hover:-translate-y-2">
-            <div className="text-4xl mb-4 transform group-hover:scale-110 transition-transform duration-300">💆</div>
-            <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-3">Wellness Spa</h3>
-            <p className="text-gray-600 dark:text-gray-300 leading-relaxed">Full-service luxury spa, state-of-the-art gym, and wellness programs</p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">
+            <div className="text-3xl mb-3">💆</div>
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Spa & Wellness</h3>
+            <p className="text-gray-600 dark:text-gray-300">Full service spa and gym</p>
           </div>
         </div>
 
         {/* Mobile Filter Toggle */}
-        <div className="lg:hidden mb-8">
+        <div className="lg:hidden mb-6">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="w-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-2xl p-6 flex items-center justify-between shadow-lg hover:shadow-xl transition-all duration-300 hover:border-gold-300 dark:hover:border-gold-700"
+            className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg p-4 flex items-center justify-between shadow-sm"
           >
-            <span className="font-bold text-lg text-gray-800 dark:text-white flex items-center gap-3">
-              <span className="w-2 h-8 bg-gradient-to-b from-gold-500 to-yellow-400 rounded-full"></span>
-              Filters {activeFiltersCount > 0 && (
-                <span className="bg-gold-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                  {activeFiltersCount}
-                </span>
-              )}
+            <span className="font-semibold text-gray-800 dark:text-white">
+              Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
             </span>
-            <span className={`transform transition-transform duration-300 text-2xl ${showFilters ? 'rotate-180 text-gold-500' : 'text-gray-400'}`}>
+            <span className={`transform transition-transform ${showFilters ? 'rotate-180' : ''}`}>
               ▼
             </span>
           </button>
@@ -173,127 +166,120 @@ export const Home = () => {
 
           {/* Rooms Grid */}
           <div className="lg:col-span-3">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-8 border border-gray-100 dark:border-gray-700">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-1 h-12 bg-gradient-to-b from-gold-500 to-yellow-400 rounded-full"></div>
-                  <div>
-                    <h2 className="text-3xl font-bold text-gray-800 dark:text-white">
-                      Available Rooms
-                    </h2>
-                    {activeFiltersCount > 0 && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 font-medium">
-                        {activeFiltersCount} filter(s) applied
-                      </p>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-6">
-                  <span className="text-lg font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-xl">
-                    {roomsData.length} rooms found
-                  </span>
-                  
-                  {activeFiltersCount > 0 && (
-                    <button
-                      onClick={clearFilters}
-                      className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-6 py-2 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+                  Available Rooms
+                </h2>
+                {activeFiltersCount > 0 && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    {activeFiltersCount} filter(s) applied
+                  </p>
+                )}
               </div>
-
-              {/* Active Filters Display */}
-              {activeFiltersCount > 0 && (
-                <div className="mt-6 flex flex-wrap gap-3">
-                  {filters.room_type && (
-                    <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg">
-                      Type: {filters.room_type}
-                      <button
-                        onClick={() => handleFilter({ ...filters, room_type: '' })}
-                        className="ml-3 hover:text-blue-200 transition-colors duration-200 font-bold"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  )}
-                  
-                  {filters.capacity && (
-                    <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg">
-                      Capacity: {filters.capacity}+
-                      <button
-                        onClick={() => handleFilter({ ...filters, capacity: '' })}
-                        className="ml-3 hover:text-green-200 transition-colors duration-200 font-bold"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  )}
-                  
-                  {(filters.min_price || filters.max_price) && (
-                    <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg">
-                      Price: {filters.min_price || '0'} - {filters.max_price || 'Any'}
-                      <button
-                        onClick={() => handleFilter({ ...filters, min_price: '', max_price: '' })}
-                        className="ml-3 hover:text-purple-200 transition-colors duration-200 font-bold"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  )}
-                  
-                  {filters.facilities.length > 0 && (
-                    <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg">
-                      Facilities: {filters.facilities.length}
-                      <button
-                        onClick={() => handleFilter({ ...filters, facilities: [] })}
-                        className="ml-3 hover:text-yellow-200 transition-colors duration-200 font-bold"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  )}
-                </div>
-              )}
+              
+              <div className="flex items-center gap-4">
+                <span className="text-gray-600 dark:text-gray-400 text-sm">
+                  {roomsData.length} rooms found
+                </span>
+                
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={clearFilters}
+                    className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium transition-colors duration-300"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
             </div>
 
+            {/* Active Filters Display */}
+            {activeFiltersCount > 0 && (
+              <div className="mb-6 flex flex-wrap gap-2">
+                {filters.room_type && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    Type: {filters.room_type}
+                    <button
+                      onClick={() => handleFilter({ ...filters, room_type: '' })}
+                      className="ml-2 hover:text-blue-600"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                
+                {filters.capacity && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    Capacity: {filters.capacity}+
+                    <button
+                      onClick={() => handleFilter({ ...filters, capacity: '' })}
+                      className="ml-2 hover:text-green-600"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                
+                {(filters.min_price || filters.max_price) && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                    Price: {filters.min_price || '0'} - {filters.max_price || 'Any'}
+                    <button
+                      onClick={() => handleFilter({ ...filters, min_price: '', max_price: '' })}
+                      className="ml-2 hover:text-purple-600"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+                
+                {filters.facilities.length > 0 && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                    Facilities: {filters.facilities.length}
+                    <button
+                      onClick={() => handleFilter({ ...filters, facilities: [] })}
+                      className="ml-2 hover:text-yellow-600"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
+
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <RoomCardSkeleton key={i} />
                 ))}
               </div>
             ) : error ? (
-              <div className="text-center py-16">
-                <div className="bg-gradient-to-r from-red-500/10 to-pink-500/10 border-2 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-8 py-8 rounded-2xl max-w-md mx-auto shadow-lg">
-                  <div className="text-6xl mb-4">😔</div>
-                  <p className="font-bold text-xl mb-2">Failed to load rooms</p>
-                  <p className="text-sm mb-6">Please check your connection and try again</p>
+              <div className="text-center py-12">
+                <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg max-w-md mx-auto">
+                  <p className="font-semibold">Failed to load rooms</p>
+                  <p className="text-sm mt-1">Please try again later</p>
                   <button
                     onClick={refetch}
-                    className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
+                    className="mt-3 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-300"
                   >
-                    Try Again
+                    Retry
                   </button>
                 </div>
               </div>
             ) : roomsData.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border-2 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300 px-8 py-8 rounded-2xl max-w-md mx-auto shadow-lg">
-                  <div className="text-6xl mb-4">🔍</div>
-                  <p className="font-bold text-xl mb-2">No rooms found</p>
-                  <p className="text-sm mb-6">
+              <div className="text-center py-12">
+                <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-600 text-yellow-700 dark:text-yellow-200 px-4 py-3 rounded-lg max-w-md mx-auto">
+                  <p className="font-semibold">No rooms found</p>
+                  <p className="text-sm mt-1">
                     {activeFiltersCount > 0 
-                      ? 'Try adjusting your search filters' 
+                      ? 'Try adjusting your filters' 
                       : 'All rooms are currently booked'
                     }
                   </p>
                   {activeFiltersCount > 0 && (
                     <button
                       onClick={clearFilters}
-                      className="bg-gradient-to-r from-gold-500 to-yellow-400 hover:from-gold-600 hover:to-yellow-500 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5"
+                      className="mt-3 bg-gold-500 hover:bg-gold-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-300"
                     >
                       Clear all filters
                     </button>
@@ -301,7 +287,7 @@ export const Home = () => {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {roomsData.map(room => (
                   <RoomCard key={room.id} room={room} />
                 ))}
@@ -311,82 +297,76 @@ export const Home = () => {
         </div>
 
         {/* Hotel Image Gallery Section */}
-        <div className="mt-20 bg-gradient-to-br from-white to-blue-50 dark:from-gray-800 dark:to-gray-900 rounded-3xl shadow-2xl p-10 border border-gray-200 dark:border-gray-700">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="mt-16 bg-white dark:bg-gray-800 rounded-lg shadow-md p-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div>
-              <h3 className="text-4xl font-bold text-gray-800 dark:text-white mb-8 leading-tight">
-                Experience Unforgettable <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-500 to-yellow-400">Luxury</span>
+              <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
+                Why Choose Our Hotel?
               </h3>
-              <ul className="space-y-4 text-gray-600 dark:text-gray-300 text-lg">
-                <li className="flex items-center p-4 rounded-xl bg-white/50 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700 transition-all duration-300 group">
-                  <span className="text-2xl text-gold-500 mr-4 group-hover:scale-110 transition-transform duration-300">✓</span>
-                  <span className="font-semibold">Luxurious rooms with premium amenities and smart technology</span>
+              <ul className="space-y-3 text-gray-600 dark:text-gray-300">
+                <li className="flex items-center">
+                  <span className="text-gold-500 mr-3">✓</span>
+                  Luxurious rooms with premium amenities
                 </li>
-                <li className="flex items-center p-4 rounded-xl bg-white/50 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700 transition-all duration-300 group">
-                  <span className="text-2xl text-gold-500 mr-4 group-hover:scale-110 transition-transform duration-300">✓</span>
-                  <span className="font-semibold">24/7 personalized concierge service and butler service</span>
+                <li className="flex items-center">
+                  <span className="text-gold-500 mr-3">✓</span>
+                  24/7 concierge service
                 </li>
-                <li className="flex items-center p-4 rounded-xl bg-white/50 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700 transition-all duration-300 group">
-                  <span className="text-2xl text-gold-500 mr-4 group-hover:scale-110 transition-transform duration-300">✓</span>
-                  <span className="font-semibold">Free high-speed WiFi and premium entertainment systems</span>
+                <li className="flex items-center">
+                  <span className="text-gold-500 mr-3">✓</span>
+                  Free high-speed WiFi
                 </li>
-                <li className="flex items-center p-4 rounded-xl bg-white/50 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700 transition-all duration-300 group">
-                  <span className="text-2xl text-gold-500 mr-4 group-hover:scale-110 transition-transform duration-300">✓</span>
-                  <span className="font-semibold">Complimentary gourmet breakfast and evening cocktails</span>
+                <li className="flex items-center">
+                  <span className="text-gold-500 mr-3">✓</span>
+                  Complimentary breakfast
                 </li>
-                <li className="flex items-center p-4 rounded-xl bg-white/50 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700 transition-all duration-300 group">
-                  <span className="text-2xl text-gold-500 mr-4 group-hover:scale-110 transition-transform duration-300">✓</span>
-                  <span className="font-semibold">Prime central location near top attractions and business districts</span>
+                <li className="flex items-center">
+                  <span className="text-gold-500 mr-3">✓</span>
+                  Central location near attractions
                 </li>
               </ul>
             </div>
             
-            {/* Enhanced Image Gallery */}
-            <div className="relative group">
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl transform group-hover:scale-[1.02] transition-all duration-700">
+            {/* Image Gallery */}
+            <div className="relative">
+              <div className="bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden h-64">
                 <img 
                   src={hotelImages[currentImageIndex]} 
-                  alt="Luxury Hotel Experience" 
-                  className="w-full h-96 object-cover transition-all duration-700"
+                  alt="Hotel Gallery" 
+                  className="w-full h-full object-cover transition-opacity duration-500"
                   onError={(e) => {
-                    e.target.src = '/placeholder-hotel.jpg'
+                    e.target.src = '/placeholder-hotel.jpg' // Fallback image
                   }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
               </div>
               
-              {/* Enhanced Navigation Buttons */}
+              {/* Navigation Buttons */}
               <button 
                 onClick={prevImage}
-                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-4 rounded-2xl shadow-2xl transition-all duration-300 hover:scale-110 group-hover:opacity-100 opacity-80"
+                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-300"
               >
-                <span className="text-2xl font-bold">‹</span>
+                ‹
               </button>
               <button 
                 onClick={nextImage}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-4 rounded-2xl shadow-2xl transition-all duration-300 hover:scale-110 group-hover:opacity-100 opacity-80"
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all duration-300"
               >
-                <span className="text-2xl font-bold">›</span>
+                ›
               </button>
               
-              {/* Enhanced Image Indicators */}
-              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-3">
+              {/* Image Indicators */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
                 {hotelImages.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentImageIndex(index)}
-                    className={`w-4 h-4 rounded-full transition-all duration-300 transform hover:scale-125 ${
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
                       index === currentImageIndex 
-                        ? 'bg-white shadow-lg scale-125' 
-                        : 'bg-white/50 hover:bg-white/80'
+                        ? 'bg-white' 
+                        : 'bg-white bg-opacity-50'
                     }`}
                   />
                 ))}
-              </div>
-
-              {/* Image Counter */}
-              <div className="absolute top-6 right-6 bg-black/60 text-white px-4 py-2 rounded-2xl text-sm font-semibold backdrop-blur-sm">
-                {currentImageIndex + 1} / {hotelImages.length}
               </div>
             </div>
           </div>

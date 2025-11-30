@@ -100,7 +100,7 @@ This is a full-stack hotel management system with a React frontend and a Flask b
     npm run dev
     ```
 
-    The frontend development server will be running at `http://localhost:5173`.
+    The frontend development server will be running at `http://localhost:3000`.
 
 ##  API Documentation
 
