@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 // Import dengan default exports
-import Home from '../pages/Home'
+import Home3D from '../pages/Home3D'
 import RoomDetail from '../pages/RoomDetail'
 import Login from '../pages/Login'
 import Register from '../pages/Register'
@@ -82,7 +82,7 @@ export const AppRouter = () => {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/" element={<Home />} />
+      <Route path="/" element={<Home3D />} />
       <Route path="/rooms/:id" element={<RoomDetail />} />
       
       <Route path="/login" element={

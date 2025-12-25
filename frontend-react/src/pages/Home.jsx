@@ -16,42 +16,64 @@ export const Home = () => {
   
   const [showFilters, setShowFilters] = useState(false)
 
-  const { data: roomsResponse, isLoading, error, refetch } = useQuery({
+  // Optimized query dengan error handling yang lebih baik
+  const { 
+    data: roomsResponse, 
+    isLoading, 
+    error, 
+    refetch,
+    isFetching 
+  } = useQuery({
     queryKey: ['rooms', filters],
-    queryFn: () => {
-      // Clean the filters object - remove empty values
-      const cleanFilters = {
-        room_type: filters.room_type || undefined,
-        min_price: filters.min_price || undefined,
-        max_price: filters.max_price || undefined,
-        capacity: filters.capacity || undefined,
-        facilities: filters.facilities.length > 0 ? filters.facilities : undefined
+    queryFn: async () => {
+      try {
+        // Clean the filters object - remove empty values
+        const cleanFilters = {
+          room_type: filters.room_type || undefined,
+          min_price: filters.min_price || undefined,
+          max_price: filters.max_price || undefined,
+          capacity: filters.capacity || undefined,
+          facilities: filters.facilities.length > 0 ? filters.facilities : undefined
+        }
+        
+        console.log('🔄 Fetching rooms with filters:', cleanFilters)
+        const response = await roomsAPI.getRooms(cleanFilters)
+        
+        // Handle berbagai struktur response
+        if (response.data && Array.isArray(response.data)) {
+          return { data: response.data, success: true }
+        } else if (Array.isArray(response)) {
+          return { data: response, success: true }
+        } else {
+          console.warn('⚠️ Unexpected response structure:', response)
+          return { data: [], success: false, error: 'Invalid response format' }
+        }
+      } catch (err) {
+        console.error('❌ Error fetching rooms:', err)
+        throw err
       }
-      
-      return roomsAPI.getRooms(cleanFilters)
     },
     keepPreviousData: true,
-    retry: 1
+    retry: 2,
+    staleTime: 5 * 60 * 1000, // 5 menit
   })
 
-  // Handle different response structures
-  const roomsData = Array.isArray(roomsResponse?.data) ? roomsResponse.data : 
-                   Array.isArray(roomsResponse) ? roomsResponse : 
-                   []
+  // Handle data dengan lebih robust
+  const roomsData = roomsResponse?.success ? roomsResponse.data : []
+  const hasRooms = roomsData && roomsData.length > 0
 
   const handleFilter = (newFilters) => {
     setFilters(newFilters)
   }
 
   const clearFilters = () => {
-    const clearedFilters = {
+    setFilters({
       room_type: '',
       min_price: '',
       max_price: '',
       capacity: '',
       facilities: []
-    }
-    setFilters(clearedFilters)
+    })
   }
 
   // Hitung jumlah filter aktif
@@ -93,6 +115,17 @@ export const Home = () => {
       prevIndex === 0 ? hotelImages.length - 1 : prevIndex - 1
     )
   }
+
+  // Debug info untuk development
+  useEffect(() => {
+    if (roomsResponse) {
+      console.log('📊 Rooms data:', {
+        total: roomsData.length,
+        data: roomsData,
+        response: roomsResponse
+      })
+    }
+  }, [roomsResponse, roomsData])
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -179,9 +212,12 @@ export const Home = () => {
               </div>
               
               <div className="flex items-center gap-4">
-                <span className="text-gray-600 dark:text-gray-400 text-sm">
-                  {roomsData.length} rooms found
-                </span>
+                {!isLoading && !error && (
+                  <span className="text-gray-600 dark:text-gray-400 text-sm">
+                    {roomsData.length} {roomsData.length === 1 ? 'room' : 'rooms'} found
+                    {isFetching && ' (updating...)'}
+                  </span>
+                )}
                 
                 {activeFiltersCount > 0 && (
                   <button
@@ -247,6 +283,7 @@ export const Home = () => {
               </div>
             )}
 
+            {/* Loading State */}
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -257,23 +294,25 @@ export const Home = () => {
               <div className="text-center py-12">
                 <div className="bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 px-4 py-3 rounded-lg max-w-md mx-auto">
                   <p className="font-semibold">Failed to load rooms</p>
-                  <p className="text-sm mt-1">Please try again later</p>
+                  <p className="text-sm mt-1">
+                    {error.response?.data?.message || error.message || 'Please try again later'}
+                  </p>
                   <button
-                    onClick={refetch}
+                    onClick={() => refetch()}
                     className="mt-3 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors duration-300"
                   >
                     Retry
                   </button>
                 </div>
               </div>
-            ) : roomsData.length === 0 ? (
+            ) : !hasRooms ? (
               <div className="text-center py-12">
                 <div className="bg-yellow-100 dark:bg-yellow-900 border border-yellow-400 dark:border-yellow-600 text-yellow-700 dark:text-yellow-200 px-4 py-3 rounded-lg max-w-md mx-auto">
                   <p className="font-semibold">No rooms found</p>
                   <p className="text-sm mt-1">
                     {activeFiltersCount > 0 
                       ? 'Try adjusting your filters' 
-                      : 'All rooms are currently booked'
+                      : 'All rooms are currently booked or unavailable'
                     }
                   </p>
                   {activeFiltersCount > 0 && (
@@ -287,11 +326,23 @@ export const Home = () => {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {roomsData.map(room => (
-                  <RoomCard key={room.id} room={room} />
-                ))}
-              </div>
+              <>
+                {/* Rooms Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {roomsData.map(room => (
+                    <RoomCard key={room.id} room={room} />
+                  ))}
+                </div>
+
+                {/* Load More Button (jika ada pagination) */}
+                {roomsData.length >= 10 && (
+                  <div className="text-center mt-8">
+                    <button className="bg-gold-500 hover:bg-gold-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300">
+                      Load More Rooms
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -335,7 +386,7 @@ export const Home = () => {
                   alt="Hotel Gallery" 
                   className="w-full h-full object-cover transition-opacity duration-500"
                   onError={(e) => {
-                    e.target.src = '/placeholder-hotel.jpg' // Fallback image
+                    e.target.src = '/placeholder-hotel.jpg'
                   }}
                 />
               </div>
