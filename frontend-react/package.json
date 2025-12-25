@@ -11,9 +11,12 @@
   "dependencies": {
     "@tanstack/react-query": "^5.8.0",
     "axios": "^1.6.0",
+    "framer-motion": "^12.23.26",
+    "lucide-react": "^0.562.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.48.0",
+    "react-intersection-observer": "^10.0.0",
     "react-router-dom": "^6.30.2",
     "zustand": "^4.4.0"
   },
