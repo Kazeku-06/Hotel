@@ -11,9 +11,9 @@ import MemberBookings3D from '../pages/MemberBookings3D'
 import BookingSuccess3D from '../pages/BookingSuccess3D'
 import MemberRate from '../pages/MemberRate'
 import AdminDashboard3D from '../pages/admin/AdminDashboard3D'
-import AdminRooms from '../pages/admin/AdminRooms'
-import AdminBookings from '../pages/admin/AdminBookings'
-import AdminRatings from '../pages/admin/AdminRatings'
+import AdminRooms3D from '../pages/admin/AdminRooms3D'
+import AdminBookings3D from '../pages/admin/AdminBookings3D'
+import AdminRatings3D from '../pages/admin/AdminRatings3D'
 
 // Protected Route untuk member only (mencegah admin mengakses)
 const MemberRoute = ({ children }) => {
@@ -132,19 +132,19 @@ export const AppRouter = () => {
       
       <Route path="/admin/rooms" element={
         <ProtectedRoute requireAdmin>
-          <AdminRooms />
+          <AdminRooms3D />
         </ProtectedRoute>
       } />
       
       <Route path="/admin/bookings" element={
         <ProtectedRoute requireAdmin>
-          <AdminBookings />
+          <AdminBookings3D />
         </ProtectedRoute>
       } />
       
       <Route path="/admin/ratings" element={
         <ProtectedRoute requireAdmin>
-          <AdminRatings />
+          <AdminRatings3D />
         </ProtectedRoute>
       } />
 

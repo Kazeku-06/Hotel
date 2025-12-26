@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import Navbar3D from './Navbar3D'
 import Footer3D from './Footer3D'
+import MobileMenu3D from './MobileMenu3D'
 
 const Layout3D = ({ children, showHero = false }) => {
   return (
@@ -17,6 +18,7 @@ const Layout3D = ({ children, showHero = false }) => {
       </motion.main>
       
       <Footer3D />
+      <MobileMenu3D />
     </div>
   )
 }
