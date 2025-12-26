@@ -3,13 +3,14 @@ import { useAuth } from '../context/AuthContext'
 
 // Import dengan default exports
 import Home3D from '../pages/Home3D'
-import RoomDetail from '../pages/RoomDetail'
-import Login from '../pages/Login'
-import Register from '../pages/Register'
-import Checkout from '../pages/Checkout'
-import MemberBookings from '../pages/MemberBookings'
+import RoomDetail3D from '../pages/RoomDetail3D'
+import Login3D from '../pages/Login3D'
+import Register3D from '../pages/Register3D'
+import Checkout3D from '../pages/Checkout3D'
+import MemberBookings3D from '../pages/MemberBookings3D'
+import BookingSuccess3D from '../pages/BookingSuccess3D'
 import MemberRate from '../pages/MemberRate'
-import AdminDashboard from '../pages/admin/AdminDashboard'
+import AdminDashboard3D from '../pages/admin/AdminDashboard3D'
 import AdminRooms from '../pages/admin/AdminRooms'
 import AdminBookings from '../pages/admin/AdminBookings'
 import AdminRatings from '../pages/admin/AdminRatings'
@@ -83,30 +84,36 @@ export const AppRouter = () => {
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<Home3D />} />
-      <Route path="/rooms/:id" element={<RoomDetail />} />
+      <Route path="/rooms/:id" element={<RoomDetail3D />} />
       
       <Route path="/login" element={
         <PublicRoute>
-          <Login />
+          <Login3D />
         </PublicRoute>
       } />
       
       <Route path="/register" element={
         <PublicRoute>
-          <Register />
+          <Register3D />
         </PublicRoute>
       } />
 
       {/* Member Only Routes - Admin tidak bisa akses */}
       <Route path="/checkout" element={
         <MemberRoute>
-          <Checkout />
+          <Checkout3D />
         </MemberRoute>
       } />
       
       <Route path="/my-bookings" element={
         <MemberRoute>
-          <MemberBookings />
+          <MemberBookings3D />
+        </MemberRoute>
+      } />
+      
+      <Route path="/booking-success" element={
+        <MemberRoute>
+          <BookingSuccess3D />
         </MemberRoute>
       } />
       
@@ -119,7 +126,7 @@ export const AppRouter = () => {
       {/* Admin Routes */}
       <Route path="/admin" element={
         <ProtectedRoute requireAdmin>
-          <AdminDashboard />
+          <AdminDashboard3D />
         </ProtectedRoute>
       } />
       
