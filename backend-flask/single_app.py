@@ -181,6 +181,84 @@ class Rating(db.Model):
     user = db.relationship('User', backref='ratings')
     booking = db.relationship('Booking', backref='rating')
 
+# NEW MODELS FOR ENHANCED FEATURES
+
+class Promotion(db.Model):
+    __tablename__ = 'promotions'
+    
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    discount_type = db.Column(db.Enum('percentage', 'fixed'), default='percentage')
+    discount_value = db.Column(db.Float, nullable=False)
+    min_nights = db.Column(db.Integer, default=1)
+    valid_from = db.Column(db.Date, nullable=False)
+    valid_until = db.Column(db.Date, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    room_type_id = db.Column(db.String(36), db.ForeignKey('room_types.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    room_type = db.relationship('RoomType', backref='promotions')
+
+class GuestService(db.Model):
+    __tablename__ = 'guest_services'
+    
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    price = db.Column(db.Float, nullable=False)
+    category = db.Column(db.Enum('spa', 'restaurant', 'transport', 'laundry', 'other'), default='other')
+    is_available = db.Column(db.Boolean, default=True)
+    icon = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class BookingService(db.Model):
+    __tablename__ = 'booking_services'
+    
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    booking_id = db.Column(db.String(36), db.ForeignKey('bookings.id'), nullable=False)
+    service_id = db.Column(db.String(36), db.ForeignKey('guest_services.id'), nullable=False)
+    quantity = db.Column(db.Integer, default=1)
+    price = db.Column(db.Float, nullable=False)
+    service_date = db.Column(db.Date, nullable=True)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    booking = db.relationship('Booking', backref='booking_services')
+    service = db.relationship('GuestService', backref='booking_services')
+
+class RoomMaintenance(db.Model):
+    __tablename__ = 'room_maintenance'
+    
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    room_id = db.Column(db.String(36), db.ForeignKey('rooms.id'), nullable=False)
+    maintenance_type = db.Column(db.Enum('cleaning', 'repair', 'inspection', 'upgrade'), default='cleaning')
+    description = db.Column(db.Text, nullable=False)
+    scheduled_date = db.Column(db.Date, nullable=False)
+    completed_date = db.Column(db.Date, nullable=True)
+    status = db.Column(db.Enum('scheduled', 'in_progress', 'completed', 'cancelled'), default='scheduled')
+    assigned_to = db.Column(db.String(100))
+    cost = db.Column(db.Float, default=0.0)
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    room = db.relationship('Room', backref='maintenance_records')
+
+class Notification(db.Model):
+    __tablename__ = 'notifications'
+    
+    id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'), nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    type = db.Column(db.Enum('booking', 'payment', 'promotion', 'maintenance', 'general'), default='general')
+    is_read = db.Column(db.Boolean, default=False)
+    booking_id = db.Column(db.String(36), db.ForeignKey('bookings.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='notifications')
+    booking = db.relationship('Booking', backref='notifications')
+
 # ROUTES
 @app.route('/')
 def home():
@@ -1487,6 +1565,616 @@ def delete_room_photo(room_id, photo_id):
 
 def serve_uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# ==== NEW ENHANCED FEATURES ====
+
+# ==== ROOM AVAILABILITY CALENDAR ====
+@app.route('/api/rooms/availability', methods=['GET'])
+
+def check_room_availability():
+    """Check room availability for specific date range"""
+    try:
+        check_in = request.args.get('check_in')
+        check_out = request.args.get('check_out')
+        room_type_id = request.args.get('room_type_id')
+        
+        if not check_in or not check_out:
+            return jsonify({'message': 'Check-in and check-out dates are required'}), 400
+        
+        from datetime import datetime
+        check_in_date = datetime.strptime(check_in, '%Y-%m-%d').date()
+        check_out_date = datetime.strptime(check_out, '%Y-%m-%d').date()
+        
+        if check_in_date >= check_out_date:
+            return jsonify({'message': 'Check-out date must be after check-in date'}), 400
+        
+        # Get all rooms
+        query = Room.query.filter_by(status='available')
+        if room_type_id:
+            query = query.filter_by(room_type_id=room_type_id)
+        
+        available_rooms = query.all()
+        
+        # Check for conflicting bookings
+        conflicting_bookings = Booking.query.filter(
+            Booking.status.in_(['confirmed', 'checked_in']),
+            Booking.check_in < check_out_date,
+            Booking.check_out > check_in_date
+        ).all()
+        
+        # Get booked room IDs
+        booked_room_ids = set()
+        for booking in conflicting_bookings:
+            for booking_room in booking.booking_rooms:
+                booked_room_ids.add(booking_room.room_id)
+        
+        # Filter out booked rooms
+        truly_available_rooms = [room for room in available_rooms if room.id not in booked_room_ids]
+        
+        result = []
+        for room in truly_available_rooms:
+            # Get primary photo
+            primary_photo = None
+            for photo in room.photos:
+                if photo.is_primary:
+                    primary_photo = f"/{photo.photo_path}"
+                    break
+            if not primary_photo and room.photos:
+                primary_photo = f"/{room.photos[0].photo_path}"
+            
+            # Get facilities
+            facilities = []
+            for fr in room.facility_rooms:
+                facilities.append({
+                    'id': fr.facility.id,
+                    'name': fr.facility.name,
+                    'icon': fr.facility.icon
+                })
+            
+            result.append({
+                'id': room.id,
+                'room_number': room.room_number,
+                'room_type': {
+                    'id': room.room_type.id,
+                    'name': room.room_type.name,
+                    'description': room.room_type.description
+                } if room.room_type else None,
+                'capacity': room.capacity,
+                'price_no_breakfast': room.price_no_breakfast,
+                'price_with_breakfast': room.price_with_breakfast,
+                'description': room.description,
+                'primary_photo': primary_photo,
+                'facilities': facilities
+            })
+        
+        return jsonify({
+            'success': True,
+            'available_rooms': result,
+            'total_available': len(result),
+            'check_in': check_in,
+            'check_out': check_out
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ ERROR in check_room_availability: {str(e)}")
+        return jsonify({'message': str(e)}), 500
+
+# ==== PROMOTIONS MANAGEMENT ====
+@app.route('/api/promotions', methods=['GET'])
+
+def get_active_promotions():
+    """Get all active promotions"""
+    try:
+        from datetime import date
+        today = date.today()
+        
+        promotions = Promotion.query.filter(
+            Promotion.is_active == True,
+            Promotion.valid_from <= today,
+            Promotion.valid_until >= today
+        ).all()
+        
+        result = []
+        for promo in promotions:
+            result.append({
+                'id': promo.id,
+                'title': promo.title,
+                'description': promo.description,
+                'discount_type': promo.discount_type,
+                'discount_value': promo.discount_value,
+                'min_nights': promo.min_nights,
+                'valid_from': promo.valid_from.isoformat(),
+                'valid_until': promo.valid_until.isoformat(),
+                'room_type': {
+                    'id': promo.room_type.id,
+                    'name': promo.room_type.name
+                } if promo.room_type else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'promotions': result,
+            'count': len(result)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+@app.route('/api/admin/promotions', methods=['GET', 'POST'])
+@jwt_required()
+
+def admin_promotions():
+    """Admin promotions management"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        if request.method == 'GET':
+            promotions = Promotion.query.order_by(Promotion.created_at.desc()).all()
+            result = []
+            for promo in promotions:
+                result.append({
+                    'id': promo.id,
+                    'title': promo.title,
+                    'description': promo.description,
+                    'discount_type': promo.discount_type,
+                    'discount_value': promo.discount_value,
+                    'min_nights': promo.min_nights,
+                    'valid_from': promo.valid_from.isoformat(),
+                    'valid_until': promo.valid_until.isoformat(),
+                    'is_active': promo.is_active,
+                    'room_type': {
+                        'id': promo.room_type.id,
+                        'name': promo.room_type.name
+                    } if promo.room_type else None,
+                    'created_at': promo.created_at.isoformat()
+                })
+            return jsonify(result), 200
+
+        elif request.method == 'POST':
+            data = request.get_json()
+            
+            required_fields = ['title', 'discount_type', 'discount_value', 'valid_from', 'valid_until']
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({'message': f'{field} is required'}), 400
+            
+            from datetime import datetime
+            valid_from = datetime.strptime(data['valid_from'], '%Y-%m-%d').date()
+            valid_until = datetime.strptime(data['valid_until'], '%Y-%m-%d').date()
+            
+            if valid_from >= valid_until:
+                return jsonify({'message': 'Valid until date must be after valid from date'}), 400
+            
+            promotion = Promotion(
+                title=data['title'],
+                description=data.get('description', ''),
+                discount_type=data['discount_type'],
+                discount_value=float(data['discount_value']),
+                min_nights=int(data.get('min_nights', 1)),
+                valid_from=valid_from,
+                valid_until=valid_until,
+                is_active=data.get('is_active', True),
+                room_type_id=data.get('room_type_id')
+            )
+            
+            db.session.add(promotion)
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Promotion created successfully',
+                'promotion': {
+                    'id': promotion.id,
+                    'title': promotion.title,
+                    'discount_value': promotion.discount_value
+                }
+            }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+@app.route('/api/admin/promotions/<promotion_id>', methods=['PUT', 'DELETE'])
+@jwt_required()
+
+def admin_promotion_detail(promotion_id):
+    """Update or delete promotion"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        promotion = Promotion.query.get(promotion_id)
+        if not promotion:
+            return jsonify({'message': 'Promotion not found'}), 404
+
+        if request.method == 'PUT':
+            data = request.get_json()
+            
+            if 'title' in data:
+                promotion.title = data['title']
+            if 'description' in data:
+                promotion.description = data['description']
+            if 'discount_type' in data:
+                promotion.discount_type = data['discount_type']
+            if 'discount_value' in data:
+                promotion.discount_value = float(data['discount_value'])
+            if 'min_nights' in data:
+                promotion.min_nights = int(data['min_nights'])
+            if 'valid_from' in data:
+                from datetime import datetime
+                promotion.valid_from = datetime.strptime(data['valid_from'], '%Y-%m-%d').date()
+            if 'valid_until' in data:
+                from datetime import datetime
+                promotion.valid_until = datetime.strptime(data['valid_until'], '%Y-%m-%d').date()
+            if 'is_active' in data:
+                promotion.is_active = data['is_active']
+            if 'room_type_id' in data:
+                promotion.room_type_id = data['room_type_id']
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Promotion updated successfully',
+                'promotion': {
+                    'id': promotion.id,
+                    'title': promotion.title
+                }
+            }), 200
+
+        elif request.method == 'DELETE':
+            db.session.delete(promotion)
+            db.session.commit()
+            
+            return jsonify({'message': 'Promotion deleted successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+# ==== GUEST SERVICES ====
+@app.route('/api/services', methods=['GET'])
+
+def get_guest_services():
+    """Get all available guest services"""
+    try:
+        services = GuestService.query.filter_by(is_available=True).all()
+        
+        result = []
+        for service in services:
+            result.append({
+                'id': service.id,
+                'name': service.name,
+                'description': service.description,
+                'price': service.price,
+                'category': service.category,
+                'icon': service.icon
+            })
+        
+        return jsonify({
+            'success': True,
+            'services': result,
+            'count': len(result)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+@app.route('/api/admin/services', methods=['GET', 'POST'])
+@jwt_required()
+
+def admin_guest_services():
+    """Admin guest services management"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        if request.method == 'GET':
+            services = GuestService.query.all()
+            result = []
+            for service in services:
+                result.append({
+                    'id': service.id,
+                    'name': service.name,
+                    'description': service.description,
+                    'price': service.price,
+                    'category': service.category,
+                    'is_available': service.is_available,
+                    'icon': service.icon,
+                    'created_at': service.created_at.isoformat()
+                })
+            return jsonify(result), 200
+
+        elif request.method == 'POST':
+            data = request.get_json()
+            
+            required_fields = ['name', 'price', 'category']
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({'message': f'{field} is required'}), 400
+            
+            service = GuestService(
+                name=data['name'],
+                description=data.get('description', ''),
+                price=float(data['price']),
+                category=data['category'],
+                is_available=data.get('is_available', True),
+                icon=data.get('icon', '')
+            )
+            
+            db.session.add(service)
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Service created successfully',
+                'service': {
+                    'id': service.id,
+                    'name': service.name,
+                    'price': service.price
+                }
+            }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+# ==== ROOM MAINTENANCE ====
+@app.route('/api/admin/maintenance', methods=['GET', 'POST'])
+@jwt_required()
+
+def admin_room_maintenance():
+    """Admin room maintenance management"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        if request.method == 'GET':
+            maintenance_records = RoomMaintenance.query.order_by(RoomMaintenance.scheduled_date.desc()).all()
+            result = []
+            for record in maintenance_records:
+                result.append({
+                    'id': record.id,
+                    'room': {
+                        'id': record.room.id,
+                        'room_number': record.room.room_number,
+                        'room_type': record.room.room_type.name if record.room.room_type else None
+                    },
+                    'maintenance_type': record.maintenance_type,
+                    'description': record.description,
+                    'scheduled_date': record.scheduled_date.isoformat(),
+                    'completed_date': record.completed_date.isoformat() if record.completed_date else None,
+                    'status': record.status,
+                    'assigned_to': record.assigned_to,
+                    'cost': record.cost,
+                    'notes': record.notes,
+                    'created_at': record.created_at.isoformat()
+                })
+            return jsonify(result), 200
+
+        elif request.method == 'POST':
+            data = request.get_json()
+            
+            required_fields = ['room_id', 'maintenance_type', 'description', 'scheduled_date']
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({'message': f'{field} is required'}), 400
+            
+            room = Room.query.get(data['room_id'])
+            if not room:
+                return jsonify({'message': 'Room not found'}), 404
+            
+            from datetime import datetime
+            scheduled_date = datetime.strptime(data['scheduled_date'], '%Y-%m-%d').date()
+            
+            maintenance = RoomMaintenance(
+                room_id=data['room_id'],
+                maintenance_type=data['maintenance_type'],
+                description=data['description'],
+                scheduled_date=scheduled_date,
+                assigned_to=data.get('assigned_to', ''),
+                cost=float(data.get('cost', 0.0)),
+                notes=data.get('notes', '')
+            )
+            
+            db.session.add(maintenance)
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Maintenance scheduled successfully',
+                'maintenance': {
+                    'id': maintenance.id,
+                    'room_number': room.room_number,
+                    'scheduled_date': maintenance.scheduled_date.isoformat()
+                }
+            }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+@app.route('/api/admin/maintenance/<maintenance_id>/status', methods=['PUT'])
+@jwt_required()
+
+def update_maintenance_status(maintenance_id):
+    """Update maintenance status"""
+    try:
+        current_user_id = get_jwt_identity()
+        user = User.query.get(current_user_id)
+        
+        if not user or user.role != 'admin':
+            return jsonify({'message': 'Admin access required'}), 403
+
+        maintenance = RoomMaintenance.query.get(maintenance_id)
+        if not maintenance:
+            return jsonify({'message': 'Maintenance record not found'}), 404
+
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if new_status not in ['scheduled', 'in_progress', 'completed', 'cancelled']:
+            return jsonify({'message': 'Invalid status'}), 400
+        
+        maintenance.status = new_status
+        
+        if new_status == 'completed' and not maintenance.completed_date:
+            from datetime import date
+            maintenance.completed_date = date.today()
+        
+        # Update room status based on maintenance status
+        if new_status == 'in_progress':
+            maintenance.room.status = 'unavailable'
+        elif new_status == 'completed':
+            maintenance.room.status = 'available'
+        elif new_status == 'cancelled':
+            maintenance.room.status = 'available'
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Maintenance status updated to {new_status}',
+            'maintenance': {
+                'id': maintenance.id,
+                'status': maintenance.status
+            }
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+# ==== NOTIFICATIONS ====
+@app.route('/api/notifications', methods=['GET'])
+@jwt_required()
+
+def get_user_notifications():
+    """Get user notifications"""
+    try:
+        current_user_id = get_jwt_identity()
+        
+        notifications = Notification.query.filter_by(user_id=current_user_id).order_by(Notification.created_at.desc()).all()
+        
+        result = []
+        for notification in notifications:
+            result.append({
+                'id': notification.id,
+                'title': notification.title,
+                'message': notification.message,
+                'type': notification.type,
+                'is_read': notification.is_read,
+                'booking_id': notification.booking_id,
+                'created_at': notification.created_at.isoformat()
+            })
+        
+        return jsonify({
+            'success': True,
+            'notifications': result,
+            'unread_count': len([n for n in notifications if not n.is_read])
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+@app.route('/api/notifications/<notification_id>/read', methods=['PUT'])
+@jwt_required()
+
+def mark_notification_read(notification_id):
+    """Mark notification as read"""
+    try:
+        current_user_id = get_jwt_identity()
+        
+        notification = Notification.query.filter_by(id=notification_id, user_id=current_user_id).first()
+        if not notification:
+            return jsonify({'message': 'Notification not found'}), 404
+        
+        notification.is_read = True
+        db.session.commit()
+        
+        return jsonify({'message': 'Notification marked as read'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
+
+# ==== ENHANCED BOOKING WITH SERVICES ====
+@app.route('/api/bookings/<booking_id>/services', methods=['GET', 'POST'])
+@jwt_required()
+
+def booking_services(booking_id):
+    """Add services to booking"""
+    try:
+        current_user_id = get_jwt_identity()
+        
+        booking = Booking.query.filter_by(id=booking_id, user_id=current_user_id).first()
+        if not booking:
+            return jsonify({'message': 'Booking not found'}), 404
+
+        if request.method == 'GET':
+            booking_services = BookingService.query.filter_by(booking_id=booking_id).all()
+            result = []
+            for bs in booking_services:
+                result.append({
+                    'id': bs.id,
+                    'service': {
+                        'id': bs.service.id,
+                        'name': bs.service.name,
+                        'category': bs.service.category
+                    },
+                    'quantity': bs.quantity,
+                    'price': bs.price,
+                    'service_date': bs.service_date.isoformat() if bs.service_date else None,
+                    'notes': bs.notes
+                })
+            return jsonify(result), 200
+
+        elif request.method == 'POST':
+            data = request.get_json()
+            
+            required_fields = ['service_id', 'quantity']
+            for field in required_fields:
+                if field not in data:
+                    return jsonify({'message': f'{field} is required'}), 400
+            
+            service = GuestService.query.get(data['service_id'])
+            if not service or not service.is_available:
+                return jsonify({'message': 'Service not available'}), 404
+            
+            total_price = service.price * int(data['quantity'])
+            
+            booking_service = BookingService(
+                booking_id=booking_id,
+                service_id=data['service_id'],
+                quantity=int(data['quantity']),
+                price=total_price,
+                service_date=datetime.strptime(data['service_date'], '%Y-%m-%d').date() if data.get('service_date') else None,
+                notes=data.get('notes', '')
+            )
+            
+            db.session.add(booking_service)
+            
+            # Update booking total price
+            booking.total_price += total_price
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Service added to booking successfully',
+                'total_price': booking.total_price
+            }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 400
 
 if __name__ == '__main__':
     with app.app_context():

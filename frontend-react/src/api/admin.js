@@ -126,6 +126,117 @@ export const adminAPI = {
       console.error('❌ Delete Review API Error:', error)
       throw error
     }
+  },
+
+  // Promotions management
+  getPromotions: async () => {
+    try {
+      console.log('🚀 API Request: GET /admin/promotions')
+      const response = await api.get('/admin/promotions')
+      console.log('✅ API Response:', response.status, '/admin/promotions')
+      return response.data
+    } catch (error) {
+      console.error('❌ Admin Promotions API Error:', error)
+      throw error
+    }
+  },
+
+  createPromotion: async (promotionData) => {
+    try {
+      console.log('🚀 API Request: POST /admin/promotions')
+      const response = await api.post('/admin/promotions', promotionData)
+      console.log('✅ API Response:', response.status, '/admin/promotions')
+      return response.data
+    } catch (error) {
+      console.error('❌ Create Promotion API Error:', error)
+      throw error
+    }
+  },
+
+  updatePromotion: async (promotionId, promotionData) => {
+    try {
+      console.log('🚀 API Request: PUT /admin/promotions/' + promotionId)
+      const response = await api.put(`/admin/promotions/${promotionId}`, promotionData)
+      console.log('✅ API Response:', response.status, '/admin/promotions/' + promotionId)
+      return response.data
+    } catch (error) {
+      console.error('❌ Update Promotion API Error:', error)
+      throw error
+    }
+  },
+
+  deletePromotion: async (promotionId) => {
+    try {
+      console.log('🚀 API Request: DELETE /admin/promotions/' + promotionId)
+      const response = await api.delete(`/admin/promotions/${promotionId}`)
+      console.log('✅ API Response:', response.status, '/admin/promotions/' + promotionId)
+      return response.data
+    } catch (error) {
+      console.error('❌ Delete Promotion API Error:', error)
+      throw error
+    }
+  },
+
+  // Guest services management
+  getGuestServices: async () => {
+    try {
+      console.log('🚀 API Request: GET /admin/services')
+      const response = await api.get('/admin/services')
+      console.log('✅ API Response:', response.status, '/admin/services')
+      return response.data
+    } catch (error) {
+      console.error('❌ Admin Guest Services API Error:', error)
+      throw error
+    }
+  },
+
+  createGuestService: async (serviceData) => {
+    try {
+      console.log('🚀 API Request: POST /admin/services')
+      const response = await api.post('/admin/services', serviceData)
+      console.log('✅ API Response:', response.status, '/admin/services')
+      return response.data
+    } catch (error) {
+      console.error('❌ Create Guest Service API Error:', error)
+      throw error
+    }
+  },
+
+  // Room maintenance management
+  getMaintenanceRecords: async () => {
+    try {
+      console.log('🚀 API Request: GET /admin/maintenance')
+      const response = await api.get('/admin/maintenance')
+      console.log('✅ API Response:', response.status, '/admin/maintenance')
+      return response.data
+    } catch (error) {
+      console.error('❌ Admin Maintenance API Error:', error)
+      throw error
+    }
+  },
+
+  createMaintenanceRecord: async (maintenanceData) => {
+    try {
+      console.log('🚀 API Request: POST /admin/maintenance')
+      const response = await api.post('/admin/maintenance', maintenanceData)
+      console.log('✅ API Response:', response.status, '/admin/maintenance')
+      return response.data
+    } catch (error) {
+      console.error('❌ Create Maintenance API Error:', error)
+      throw error
+    }
+  },
+
+  updateMaintenanceStatus: async (maintenanceId, status) => {
+    try {
+      console.log('🚀 API Request: PUT /admin/maintenance/' + maintenanceId + '/status')
+      const response = await api.put(`/admin/maintenance/${maintenanceId}/status`, { status })
+      console.log('✅ API Response:', response.status, '/admin/maintenance/' + maintenanceId + '/status')
+      return response.data
+    } catch (error) {
+      console.error('❌ Update Maintenance Status API Error:', error)
+      throw error
+    }
   }
 }
 

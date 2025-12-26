@@ -14,7 +14,8 @@ import {
   BarChart3,
   PieChart,
   Activity,
-  Clock
+  Clock,
+  Tag
 } from 'lucide-react'
 import Layout3D from '../../components/Layout3D'
 import { adminAPI } from '../../api/admin'
@@ -81,6 +82,13 @@ const AdminDashboard3D = () => {
       icon: Calendar,
       link: '/admin/bookings',
       color: 'from-green-500 to-emerald-500'
+    },
+    {
+      title: 'Promotions',
+      description: 'Create and manage special offers',
+      icon: Tag,
+      link: '/admin/promotions',
+      color: 'from-pink-500 to-rose-500'
     },
     {
       title: 'Guest Reviews',

@@ -14,6 +14,7 @@ import AdminDashboard3D from '../pages/admin/AdminDashboard3D'
 import AdminRooms3D from '../pages/admin/AdminRooms3D'
 import AdminBookings3D from '../pages/admin/AdminBookings3D'
 import AdminRatings3D from '../pages/admin/AdminRatings3D'
+import AdminPromotions3D from '../pages/admin/AdminPromotions3D'
 
 // Protected Route untuk member only (mencegah admin mengakses)
 const MemberRoute = ({ children }) => {
@@ -145,6 +146,12 @@ export const AppRouter = () => {
       <Route path="/admin/ratings" element={
         <ProtectedRoute requireAdmin>
           <AdminRatings3D />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/admin/promotions" element={
+        <ProtectedRoute requireAdmin>
+          <AdminPromotions3D />
         </ProtectedRoute>
       } />
 
