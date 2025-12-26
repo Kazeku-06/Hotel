@@ -121,7 +121,7 @@ const Checkout3D = () => {
 
   return (
     <Layout3D>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-6 md:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <motion.div
@@ -137,32 +137,32 @@ const Checkout3D = () => {
               <span>Back to Room Details</span>
             </button>
             
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">Complete Your Booking</h1>
-            <p className="text-gray-600">Secure your luxury stay at Grand Imperion</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Complete Your Booking</h1>
+            <p className="text-gray-600 text-sm md:text-base">Secure your luxury stay at Grand Imperion</p>
           </motion.div>
 
           {/* Progress Steps */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-12"
+            className="mb-8 md:mb-12"
           >
-            <div className="flex items-center justify-center space-x-8">
+            <div className="flex items-center justify-center space-x-4 md:space-x-8 overflow-x-auto pb-4">
               {[
                 { step: 1, title: 'Guest Details', icon: User },
                 { step: 2, title: 'Review Booking', icon: CheckCircle },
                 { step: 3, title: 'Payment', icon: CreditCard }
               ].map(({ step, title, icon: Icon }) => (
-                <div key={step} className="flex items-center">
-                  <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300 ${
+                <div key={step} className="flex items-center flex-shrink-0">
+                  <div className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full border-2 transition-all duration-300 ${
                     currentStep >= step 
                       ? 'bg-blue-600 border-blue-600 text-white' 
                       : 'border-gray-300 text-gray-400'
                   }`}>
-                    <Icon className="w-6 h-6" />
+                    <Icon className="w-5 h-5 md:w-6 md:h-6" />
                   </div>
-                  <div className="ml-3">
-                    <div className={`text-sm font-medium ${
+                  <div className="ml-2 md:ml-3 hidden sm:block">
+                    <div className={`text-xs md:text-sm font-medium ${
                       currentStep >= step ? 'text-blue-600' : 'text-gray-400'
                     }`}>
                       Step {step}
@@ -174,7 +174,7 @@ const Checkout3D = () => {
                     </div>
                   </div>
                   {step < 3 && (
-                    <div className={`w-16 h-0.5 ml-8 ${
+                    <div className={`w-8 md:w-16 h-0.5 ml-4 md:ml-8 ${
                       currentStep > step ? 'bg-blue-600' : 'bg-gray-300'
                     }`} />
                   )}
@@ -183,7 +183,7 @@ const Checkout3D = () => {
             </div>
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
             {/* Main Content */}
             <div className="lg:col-span-2">
               <form onSubmit={handleSubmit}>

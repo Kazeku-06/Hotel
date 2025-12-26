@@ -31,10 +31,17 @@ const AdminBookings3D = () => {
   const queryClient = useQueryClient()
 
   // Fetch bookings
-  const { data: bookings = [], isLoading, error } = useQuery({
+  const { data: bookingsResponse, isLoading, error } = useQuery({
     queryKey: ['admin-bookings'],
     queryFn: () => adminAPI.getBookings()
   })
+
+  // Ensure bookings is always an array
+  const bookings = Array.isArray(bookingsResponse) 
+    ? bookingsResponse 
+    : bookingsResponse?.data && Array.isArray(bookingsResponse.data) 
+      ? bookingsResponse.data 
+      : []
 
   // Update booking status mutation
   const updateStatusMutation = useMutation({
@@ -87,7 +94,7 @@ const AdminBookings3D = () => {
     setIsModalOpen(true)
   }
 
-  const filteredBookings = bookings.filter(booking => {
+  const filteredBookings = Array.isArray(bookings) ? bookings.filter(booking => {
     const matchesSearch = booking.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          booking.room?.room_number?.toString().includes(searchTerm) ||
                          booking.id?.toString().includes(searchTerm)
@@ -114,7 +121,7 @@ const AdminBookings3D = () => {
     }
     
     return matchesSearch && matchesStatus && matchesDate
-  })
+  }) : []
 
   if (isLoading) {
     return (
@@ -199,10 +206,10 @@ const AdminBookings3D = () => {
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 md:mb-8">
             {[
-              { label: 'Total Bookings', value: bookings.length, color: 'from-blue-500 to-cyan-500' },
-              { label: 'Confirmed', value: bookings.filter(b => b.status === 'confirmed').length, color: 'from-green-500 to-emerald-500' },
-              { label: 'Pending', value: bookings.filter(b => b.status === 'pending').length, color: 'from-yellow-500 to-orange-500' },
-              { label: 'Cancelled', value: bookings.filter(b => b.status === 'cancelled').length, color: 'from-red-500 to-pink-500' }
+              { label: 'Total Bookings', value: bookings.length || 0, color: 'from-blue-500 to-cyan-500' },
+              { label: 'Confirmed', value: bookings.filter(b => b.status === 'confirmed').length || 0, color: 'from-green-500 to-emerald-500' },
+              { label: 'Pending', value: bookings.filter(b => b.status === 'pending').length || 0, color: 'from-yellow-500 to-orange-500' },
+              { label: 'Cancelled', value: bookings.filter(b => b.status === 'cancelled').length || 0, color: 'from-red-500 to-pink-500' }
             ].map((stat, index) => (
               <motion.div
                 key={index}

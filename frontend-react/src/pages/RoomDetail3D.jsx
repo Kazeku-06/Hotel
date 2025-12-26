@@ -129,7 +129,7 @@ const RoomDetail3D = () => {
     <Layout3D>
       <div className="min-h-screen bg-gray-50">
         {/* Hero Section with Image Gallery */}
-        <section className="relative h-96 md:h-[500px] overflow-hidden">
+        <section className="relative h-64 sm:h-80 md:h-96 lg:h-[500px] overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentImageIndex}
@@ -154,33 +154,33 @@ const RoomDetail3D = () => {
           {/* Navigation Arrows */}
           <button
             onClick={prevImage}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-3 rounded-full transition-all duration-300"
+            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-2 md:p-3 rounded-full transition-all duration-300"
           >
-            <ChevronLeft className="w-6 h-6" />
+            <ChevronLeft className="w-4 h-4 md:w-6 md:h-6" />
           </button>
           <button
             onClick={nextImage}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-3 rounded-full transition-all duration-300"
+            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-20 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-2 md:p-3 rounded-full transition-all duration-300"
           >
-            <ChevronRight className="w-6 h-6" />
+            <ChevronRight className="w-4 h-4 md:w-6 md:h-6" />
           </button>
 
           {/* Image Counter and Actions */}
-          <div className="absolute top-4 right-4 z-20 flex items-center space-x-3">
+          <div className="absolute top-2 md:top-4 right-2 md:right-4 z-20 flex items-center space-x-2 md:space-x-3">
             <button
               onClick={() => setIsImageModalOpen(true)}
-              className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-2 rounded-full transition-all duration-300"
+              className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-1.5 md:p-2 rounded-full transition-all duration-300"
             >
-              <ZoomIn className="w-5 h-5" />
+              <ZoomIn className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             <button
               onClick={() => setIsLiked(!isLiked)}
-              className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-2 rounded-full transition-all duration-300"
+              className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-1.5 md:p-2 rounded-full transition-all duration-300"
             >
-              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-500' : ''}`} />
+              <Heart className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-current text-red-500' : ''}`} />
             </button>
-            <button className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-2 rounded-full transition-all duration-300">
-              <Share2 className="w-5 h-5" />
+            <button className="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-1.5 md:p-2 rounded-full transition-all duration-300">
+              <Share2 className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </div>
 
@@ -198,23 +198,23 @@ const RoomDetail3D = () => {
           </div>
 
           {/* Room Title Overlay */}
-          <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/70 to-transparent p-8">
+          <div className="absolute bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-black/70 to-transparent p-4 md:p-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
               className="text-white"
             >
-              <h1 className="text-4xl md:text-5xl font-bold mb-2">
+              <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2">
                 {room.name || `Room ${room.room_number}`}
               </h1>
-              <div className="flex items-center space-x-4 text-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-sm md:text-lg space-y-2 sm:space-y-0">
                 <div className="flex items-center space-x-1">
-                  <MapPin className="w-5 h-5" />
+                  <MapPin className="w-4 h-4 md:w-5 md:h-5" />
                   <span>Grand Imperion Hotel</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <Star className="w-5 h-5 text-yellow-400 fill-current" />
+                  <Star className="w-4 h-4 md:w-5 md:h-5 text-yellow-400 fill-current" />
                   <span>4.8 (124 reviews)</span>
                 </div>
               </div>
@@ -223,10 +223,10 @@ const RoomDetail3D = () => {
         </section>
 
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
             {/* Left Column - Room Details */}
-            <div className="lg:col-span-2 space-y-8">
+            <div className="lg:col-span-2 space-y-6 md:space-y-8">
               {/* Room Info */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}

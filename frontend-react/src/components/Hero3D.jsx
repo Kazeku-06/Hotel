@@ -87,27 +87,27 @@ const Hero3D = () => {
         </motion.div>
       </AnimatePresence>
 
-      {/* Navigation Arrows */}
+      {/* Navigation Arrows - Hidden on mobile */}
       <button
         onClick={prevSlide}
-        className="absolute left-6 top-1/2 -translate-y-1/2 z-20 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-3 rounded-full transition-all duration-300 group"
+        className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 z-20 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-2 md:p-3 rounded-full transition-all duration-300 group hidden sm:block"
       >
-        <ChevronLeft className="w-6 h-6 group-hover:scale-110 transition-transform" />
+        <ChevronLeft className="w-4 h-4 md:w-6 md:h-6 group-hover:scale-110 transition-transform" />
       </button>
       <button
         onClick={nextSlide}
-        className="absolute right-6 top-1/2 -translate-y-1/2 z-20 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-3 rounded-full transition-all duration-300 group"
+        className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 z-20 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white p-2 md:p-3 rounded-full transition-all duration-300 group hidden sm:block"
       >
-        <ChevronRight className="w-6 h-6 group-hover:scale-110 transition-transform" />
+        <ChevronRight className="w-4 h-4 md:w-6 md:h-6 group-hover:scale-110 transition-transform" />
       </button>
 
       {/* Slide Indicators */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex space-x-3">
+      <div className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 z-20 flex space-x-2 md:space-x-3">
         {heroSlides.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}
-            className={`w-3 h-3 rounded-full transition-all duration-300 ${
+            className={`w-2 h-2 md:w-3 md:h-3 rounded-full transition-all duration-300 ${
               index === currentSlide 
                 ? 'bg-white scale-125' 
                 : 'bg-white/50 hover:bg-white/75'
@@ -117,20 +117,20 @@ const Hero3D = () => {
       </div>
 
       {/* Hero Content */}
-      <div className="absolute inset-0 z-10 flex items-center justify-center">
-        <div className="text-center text-white px-4 max-w-6xl mx-auto">
+      <div className="absolute inset-0 z-10 flex items-center justify-center px-4">
+        <div className="text-center text-white max-w-6xl mx-auto w-full">
           {/* Animated Title */}
           <motion.div
             key={`title-${currentSlide}`}
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="mb-8"
+            className="mb-6 md:mb-8"
           >
-            <h1 className="text-5xl md:text-7xl font-bold mb-4 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
               {heroSlides[currentSlide].title}
             </h1>
-            <p className="text-xl md:text-2xl text-gray-200 max-w-3xl mx-auto">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-200 max-w-3xl mx-auto">
               {heroSlides[currentSlide].subtitle}
             </p>
           </motion.div>
@@ -140,14 +140,14 @@ const Hero3D = () => {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="bg-white/95 backdrop-blur-lg rounded-2xl p-6 md:p-8 shadow-2xl max-w-4xl mx-auto"
+            className="bg-white/95 backdrop-blur-lg rounded-xl md:rounded-2xl p-4 md:p-6 lg:p-8 shadow-2xl max-w-4xl mx-auto"
           >
-            <form onSubmit={handleSearch} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <form onSubmit={handleSearch} className="space-y-4 md:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 {/* Destination */}
                 <div className="relative">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    <MapPin className="inline w-4 h-4 mr-1" />
+                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                    <MapPin className="inline w-3 h-3 md:w-4 md:h-4 mr-1" />
                     Destination
                   </label>
                   <input
@@ -155,48 +155,48 @@ const Hero3D = () => {
                     placeholder="Where are you going?"
                     value={searchData.destination}
                     onChange={(e) => setSearchData({...searchData, destination: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm md:text-base"
                   />
                 </div>
 
                 {/* Check-in */}
                 <div className="relative">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    <Calendar className="inline w-4 h-4 mr-1" />
+                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                    <Calendar className="inline w-3 h-3 md:w-4 md:h-4 mr-1" />
                     Check-in
                   </label>
                   <input
                     type="date"
                     value={searchData.checkIn}
                     onChange={(e) => setSearchData({...searchData, checkIn: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm md:text-base"
                   />
                 </div>
 
                 {/* Check-out */}
                 <div className="relative">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    <Calendar className="inline w-4 h-4 mr-1" />
+                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                    <Calendar className="inline w-3 h-3 md:w-4 md:h-4 mr-1" />
                     Check-out
                   </label>
                   <input
                     type="date"
                     value={searchData.checkOut}
                     onChange={(e) => setSearchData({...searchData, checkOut: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm md:text-base"
                   />
                 </div>
 
                 {/* Guests */}
                 <div className="relative">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    <Users className="inline w-4 h-4 mr-1" />
+                  <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                    <Users className="inline w-3 h-3 md:w-4 md:h-4 mr-1" />
                     Guests
                   </label>
                   <select
                     value={searchData.guests}
                     onChange={(e) => setSearchData({...searchData, guests: parseInt(e.target.value)})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm md:text-base"
                   >
                     {[1,2,3,4,5,6,7,8].map(num => (
                       <option key={num} value={num}>{num} Guest{num > 1 ? 's' : ''}</option>
@@ -210,9 +210,9 @@ const Hero3D = () => {
                 type="submit"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 md:py-4 px-6 md:px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 text-sm md:text-base"
               >
-                <Search className="w-5 h-5" />
+                <Search className="w-4 h-4 md:w-5 md:h-5" />
                 <span>Search Hotels</span>
               </motion.button>
             </form>
@@ -223,25 +223,25 @@ const Hero3D = () => {
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.8 }}
-            className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-8 text-center"
+            className="mt-8 md:mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 text-center"
           >
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="text-3xl font-bold mb-1">500+</div>
-              <div className="text-sm text-gray-300">Happy Guests</div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 md:p-4">
+              <div className="text-2xl md:text-3xl font-bold mb-1">500+</div>
+              <div className="text-xs md:text-sm text-gray-300">Happy Guests</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="text-3xl font-bold mb-1 flex items-center justify-center">
-                4.9 <Star className="w-5 h-5 ml-1 text-yellow-400 fill-current" />
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 md:p-4">
+              <div className="text-2xl md:text-3xl font-bold mb-1 flex items-center justify-center">
+                4.9 <Star className="w-4 h-4 md:w-5 md:h-5 ml-1 text-yellow-400 fill-current" />
               </div>
-              <div className="text-sm text-gray-300">Rating</div>
+              <div className="text-xs md:text-sm text-gray-300">Rating</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="text-3xl font-bold mb-1">50+</div>
-              <div className="text-sm text-gray-300">Luxury Rooms</div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 md:p-4">
+              <div className="text-2xl md:text-3xl font-bold mb-1">50+</div>
+              <div className="text-xs md:text-sm text-gray-300">Luxury Rooms</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-              <div className="text-3xl font-bold mb-1">24/7</div>
-              <div className="text-sm text-gray-300">Service</div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 md:p-4">
+              <div className="text-2xl md:text-3xl font-bold mb-1">24/7</div>
+              <div className="text-xs md:text-sm text-gray-300">Service</div>
             </div>
           </motion.div>
         </div>
