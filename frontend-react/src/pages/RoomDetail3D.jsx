@@ -41,7 +41,7 @@ const RoomDetail3D = () => {
   // Fetch room details
   const { data: room, isLoading, error } = useQuery({
     queryKey: ['room', id],
-    queryFn: () => roomsAPI.getRoomById(id),
+    queryFn: () => roomsAPI.getRoom(id),
     enabled: !!id
   })
 
