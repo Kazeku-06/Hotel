@@ -47,23 +47,23 @@ const BookingSuccess3D = () => {
 
   return (
     <Layout3D>
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 py-12">
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 py-6 md:py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Success Animation */}
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.6, type: "spring", bounce: 0.4 }}
-            className="text-center mb-12"
+            className="text-center mb-8 md:mb-12"
           >
-            <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-12 h-12 text-white" />
+            <div className="w-16 h-16 md:w-24 md:h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6">
+              <CheckCircle className="w-8 h-8 md:w-12 md:h-12 text-white" />
             </div>
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="text-4xl md:text-5xl font-bold text-gray-800 mb-4"
+              className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-800 mb-4"
             >
               Booking <span className="text-green-600">Confirmed!</span>
             </motion.h1>
@@ -71,7 +71,7 @@ const BookingSuccess3D = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="text-xl text-gray-600"
+              className="text-lg md:text-xl text-gray-600 px-4"
             >
               Thank you for choosing Grand Imperion. Your reservation has been successfully processed.
             </motion.p>
@@ -82,39 +82,39 @@ const BookingSuccess3D = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="bg-white rounded-3xl shadow-2xl overflow-hidden mb-8"
+            className="bg-white rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden mb-6 md:mb-8"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white">
-              <div className="flex items-center justify-between">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 md:p-8 text-white">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">Booking Confirmation</h2>
-                  <p className="opacity-90">Confirmation #GI-2024-001</p>
+                  <h2 className="text-xl md:text-2xl font-bold mb-2">Booking Confirmation</h2>
+                  <p className="opacity-90 text-sm md:text-base">Confirmation #GI-2024-001</p>
                 </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold">{formatPrice(total)}</div>
-                  <div className="opacity-90">Total Amount</div>
+                <div className="text-left sm:text-right">
+                  <div className="text-2xl md:text-3xl font-bold">{formatPrice(total)}</div>
+                  <div className="opacity-90 text-sm md:text-base">Total Amount</div>
                 </div>
               </div>
             </div>
 
             {/* Content */}
-            <div className="p-8">
+            <div className="p-6 md:p-8">
               {/* Room Information */}
-              <div className="mb-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Room Details</h3>
-                <div className="flex items-start space-x-6">
+              <div className="mb-6 md:mb-8">
+                <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">Room Details</h3>
+                <div className="flex flex-col sm:flex-row sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
                   <img
                     src={room.image_url || room.primary_photo ? `http://localhost:5000${room.primary_photo}` : '/hotel1.jpeg'}
                     alt={room.name || `Room ${room.room_number}`}
-                    className="w-32 h-32 object-cover rounded-lg"
+                    className="w-full sm:w-32 h-32 object-cover rounded-lg"
                   />
                   <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                    <h4 className="text-base md:text-lg font-semibold text-gray-800 mb-2">
                       {room.name || `Room ${room.room_number}`}
                     </h4>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600 mb-2">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-sm text-gray-600 mb-2 space-y-1 sm:space-y-0">
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-semibold text-xs">
                         {room.room_type?.name || room.room_type || 'Standard'}
                       </span>
                       <div className="flex items-center space-x-1">
@@ -131,7 +131,7 @@ const BookingSuccess3D = () => {
               </div>
 
               {/* Booking Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-8">
                 <div>
                   <h3 className="text-xl font-bold text-gray-800 mb-4">Stay Details</h3>
                   <div className="space-y-3">
@@ -224,29 +224,29 @@ const BookingSuccess3D = () => {
               </div>
 
               {/* Actions */}
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2"
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 md:py-4 px-4 md:px-6 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center space-x-2 text-sm md:text-base"
                 >
-                  <Download className="w-5 h-5" />
+                  <Download className="w-4 h-4 md:w-5 md:h-5" />
                   <span>Download Confirmation</span>
                 </motion.button>
                 
                 <Link
                   to="/my-bookings"
-                  className="flex-1 border-2 border-gray-300 text-gray-700 font-bold py-4 px-6 rounded-xl hover:bg-gray-50 transition-all duration-300 flex items-center justify-center space-x-2"
+                  className="flex-1 border-2 border-gray-300 text-gray-700 font-bold py-3 md:py-4 px-4 md:px-6 rounded-xl hover:bg-gray-50 transition-all duration-300 flex items-center justify-center space-x-2 text-sm md:text-base"
                 >
-                  <Calendar className="w-5 h-5" />
+                  <Calendar className="w-4 h-4 md:w-5 md:h-5" />
                   <span>View My Bookings</span>
                 </Link>
                 
                 <Link
                   to="/"
-                  className="flex-1 border-2 border-blue-600 text-blue-600 font-bold py-4 px-6 rounded-xl hover:bg-blue-50 transition-all duration-300 flex items-center justify-center space-x-2"
+                  className="flex-1 border-2 border-blue-600 text-blue-600 font-bold py-3 md:py-4 px-4 md:px-6 rounded-xl hover:bg-blue-50 transition-all duration-300 flex items-center justify-center space-x-2 text-sm md:text-base"
                 >
-                  <Home className="w-5 h-5" />
+                  <Home className="w-4 h-4 md:w-5 md:h-5" />
                   <span>Back to Home</span>
                 </Link>
               </div>

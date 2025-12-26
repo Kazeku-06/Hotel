@@ -26,10 +26,17 @@ const MemberBookings3D = () => {
   const [selectedBooking, setSelectedBooking] = useState(null)
 
   // Fetch bookings
-  const { data: bookings = [], isLoading, error } = useQuery({
+  const { data: bookingsResponse, isLoading, error } = useQuery({
     queryKey: ['member-bookings'],
     queryFn: bookingsAPI.getMemberBookings
   })
+
+  // Ensure bookings is always an array
+  const bookings = Array.isArray(bookingsResponse) 
+    ? bookingsResponse 
+    : bookingsResponse?.data && Array.isArray(bookingsResponse.data) 
+      ? bookingsResponse.data 
+      : []
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('id-ID', {
@@ -65,12 +72,12 @@ const MemberBookings3D = () => {
     }
   }
 
-  const filteredBookings = bookings.filter(booking => {
+  const filteredBookings = Array.isArray(bookings) ? bookings.filter(booking => {
     const matchesSearch = booking.room?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          booking.room?.room_number?.toString().includes(searchTerm)
     const matchesStatus = statusFilter === 'all' || booking.status === statusFilter
     return matchesSearch && matchesStatus
-  })
+  }) : []
 
   if (isLoading) {
     return (
@@ -87,7 +94,7 @@ const MemberBookings3D = () => {
 
   return (
     <Layout3D>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-6 md:py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header */}
           <motion.div
@@ -95,8 +102,8 @@ const MemberBookings3D = () => {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">My Bookings</h1>
-            <p className="text-gray-600">Manage and track your hotel reservations</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">My Bookings</h1>
+            <p className="text-gray-600 text-sm md:text-base">Manage and track your hotel reservations</p>
           </motion.div>
 
           {/* Filters and Search */}
@@ -183,7 +190,7 @@ const MemberBookings3D = () => {
                   <div className="p-6">
                     <div className="flex flex-col lg:flex-row gap-6">
                       {/* Room Image */}
-                      <div className="lg:w-48 h-32 lg:h-auto">
+                      <div className="w-full lg:w-48 h-48 lg:h-auto">
                         <img
                           src={booking.room?.image_url || booking.room?.primary_photo ? `http://localhost:5000${booking.room.primary_photo}` : '/hotel1.jpeg'}
                           alt={booking.room?.name || `Room ${booking.room?.room_number}`}
@@ -258,43 +265,46 @@ const MemberBookings3D = () => {
                         </div>
 
                         {/* Actions and Price */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
+                          <div className="flex flex-wrap items-center gap-3">
                             <motion.button
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                               onClick={() => setSelectedBooking(booking)}
-                              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-300"
+                              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-sm"
                             >
                               <Eye className="w-4 h-4" />
-                              <span>View Details</span>
+                              <span className="hidden sm:inline">View Details</span>
+                              <span className="sm:hidden">View</span>
                             </motion.button>
                             
                             <motion.button
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
-                              className="flex items-center space-x-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-300"
+                              className="flex items-center space-x-2 border border-gray-300 text-gray-700 px-3 md:px-4 py-2 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-300 text-sm"
                             >
                               <Download className="w-4 h-4" />
-                              <span>Download</span>
+                              <span className="hidden sm:inline">Download</span>
+                              <span className="sm:hidden">PDF</span>
                             </motion.button>
 
                             {booking.status === 'confirmed' && !booking.rating && (
                               <Link
                                 to={`/rate/${booking.id}`}
-                                className="flex items-center space-x-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-300"
+                                className="flex items-center space-x-2 bg-yellow-500 hover:bg-yellow-600 text-white px-3 md:px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-sm"
                               >
                                 <Star className="w-4 h-4" />
-                                <span>Rate Stay</span>
+                                <span className="hidden sm:inline">Rate Stay</span>
+                                <span className="sm:hidden">Rate</span>
                               </Link>
                             )}
                           </div>
                           
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-gray-800">
+                          <div className="text-left sm:text-right w-full sm:w-auto">
+                            <div className="text-xl md:text-2xl font-bold text-gray-800">
                               {formatPrice(booking.total_amount)}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-xs md:text-sm text-gray-500">
                               Booking #{booking.id}
                             </div>
                           </div>

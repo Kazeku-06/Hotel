@@ -27,10 +27,17 @@ const AdminRatings3D = () => {
   const queryClient = useQueryClient()
 
   // Fetch reviews
-  const { data: reviews = [], isLoading, error } = useQuery({
+  const { data: reviewsResponse, isLoading, error } = useQuery({
     queryKey: ['admin-reviews'],
     queryFn: () => adminAPI.getReviews()
   })
+
+  // Ensure reviews is always an array
+  const reviews = Array.isArray(reviewsResponse) 
+    ? reviewsResponse 
+    : reviewsResponse?.data && Array.isArray(reviewsResponse.data) 
+      ? reviewsResponse.data 
+      : []
 
   // Delete review mutation
   const deleteReviewMutation = useMutation({
@@ -71,7 +78,7 @@ const AdminRatings3D = () => {
     return 'text-red-600 bg-red-100'
   }
 
-  const filteredReviews = reviews.filter(review => {
+  const filteredReviews = Array.isArray(reviews) ? reviews.filter(review => {
     const matchesSearch = review.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          review.comment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          review.room?.name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -96,7 +103,7 @@ const AdminRatings3D = () => {
       default:
         return 0
     }
-  })
+  }) : []
 
   // Calculate stats
   const averageRating = reviews.length > 0 

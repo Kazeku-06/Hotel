@@ -48,10 +48,17 @@ const AdminRooms3D = () => {
   const queryClient = useQueryClient()
 
   // Fetch rooms
-  const { data: rooms = [], isLoading, error } = useQuery({
+  const { data: roomsResponse, isLoading, error } = useQuery({
     queryKey: ['admin-rooms'],
     queryFn: () => adminAPI.getRooms()
   })
+
+  // Ensure rooms is always an array
+  const rooms = Array.isArray(roomsResponse) 
+    ? roomsResponse 
+    : roomsResponse?.data && Array.isArray(roomsResponse.data) 
+      ? roomsResponse.data 
+      : []
 
   // Create room mutation
   const createRoomMutation = useMutation({
@@ -160,13 +167,13 @@ const AdminRooms3D = () => {
     }))
   }
 
-  const filteredRooms = rooms.filter(room => {
+  const filteredRooms = Array.isArray(rooms) ? rooms.filter(room => {
     const matchesSearch = room.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          room.room_number?.toString().includes(searchTerm)
     const matchesStatus = statusFilter === 'all' || room.status === statusFilter
     const matchesType = typeFilter === 'all' || room.room_type?.name === typeFilter || room.room_type === typeFilter
     return matchesSearch && matchesStatus && matchesType
-  })
+  }) : []
 
   if (isLoading) {
     return (
