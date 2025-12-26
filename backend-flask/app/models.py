@@ -17,6 +17,10 @@ class User(db.Model):
     role = db.Column(db.Enum('admin', 'member'), default='member')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Relationships
+    bookings = db.relationship('Booking', backref='user', lazy=True)
+    ratings = db.relationship('Rating', backref='user', lazy=True)
+    
     def set_password(self, password):
         self.password = generate_password_hash(password)
     
@@ -30,6 +34,9 @@ class RoomType(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    rooms = db.relationship('Room', backref='room_type', lazy=True)
 
 class Room(db.Model):
     __tablename__ = 'rooms'
@@ -43,6 +50,11 @@ class Room(db.Model):
     status = db.Column(db.Enum('available', 'unavailable'), default='available')
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    photos = db.relationship('RoomPhoto', backref='room', lazy=True, cascade='all, delete-orphan')
+    facilities = db.relationship('Facility', secondary='facility_room', backref='rooms', lazy=True)
+    booking_rooms = db.relationship('BookingRoom', backref='room', lazy=True)
 
 class RoomPhoto(db.Model):
     __tablename__ = 'room_photos'
@@ -50,6 +62,7 @@ class RoomPhoto(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
     room_id = db.Column(db.String(36), db.ForeignKey('rooms.id'), nullable=False)
     photo_path = db.Column(db.String(255), nullable=False)
+    is_primary = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Facility(db.Model):
@@ -82,6 +95,10 @@ class Booking(db.Model):
     total_price = db.Column(db.Float, nullable=False)
     status = db.Column(db.Enum('pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled'), default='pending')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    booking_rooms = db.relationship('BookingRoom', backref='booking', lazy=True, cascade='all, delete-orphan')
+    ratings = db.relationship('Rating', backref='booking', lazy=True)
 
 class BookingRoom(db.Model):
     __tablename__ = 'booking_rooms'
