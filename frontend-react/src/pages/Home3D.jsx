@@ -20,6 +20,8 @@ import Hero3D from '../components/Hero3D'
 import RoomCard3D from '../components/RoomCard3D'
 import SearchFilters3D from '../components/SearchFilters3D'
 import Testimonials3D from '../components/Testimonials3D'
+import PromotionsBanner3D from '../components/PromotionsBanner3D'
+import RoomAvailabilityCalendar3D from '../components/RoomAvailabilityCalendar3D'
 import { RoomCardSkeleton } from '../components/LoadingSkeleton'
 import { roomsAPI } from '../api/rooms'
 
@@ -148,6 +150,25 @@ const Home3D = () => {
     <Layout3D showHero>
       {/* Hero Section */}
       <Hero3D />
+
+      {/* Promotions Banner */}
+      <section className="py-8 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <PromotionsBanner3D />
+        </div>
+      </section>
+
+      {/* Room Availability Calendar */}
+      <section className="py-12 md:py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <RoomAvailabilityCalendar3D 
+            onRoomSelect={(room, checkIn, checkOut) => {
+              // Navigate to room detail with booking dates
+              window.location.href = `/rooms/${room.id}?check_in=${checkIn}&check_out=${checkOut}`
+            }}
+          />
+        </div>
+      </section>
 
       {/* Features Section */}
       <section className="py-12 md:py-20 bg-white">

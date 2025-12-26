@@ -23,67 +23,39 @@ export const bookingsAPI = {
   // Get member bookings
   getMemberBookings: async () => {
     try {
-      console.log('🚀 API Request: GET /bookings/member')
-      const response = await api.get('/bookings/member')
-      console.log('✅ API Response:', response.status, '/bookings/member')
-      return response.data
+      console.log('🚀 API Request: GET /bookings/me')
+      const response = await api.get('/bookings/me')
+      console.log('✅ API Response:', response.status, '/bookings/me')
+      
+      // Transform the data to match frontend expectations
+      if (response.data.success && Array.isArray(response.data.data)) {
+        return response.data.data.map(booking => ({
+          id: booking.id,
+          room: {
+            id: booking.booking_rooms[0]?.room_id || null,
+            name: `${booking.booking_rooms[0]?.room_type || 'Room'} - ${booking.guest_name}`,
+            room_number: booking.booking_rooms[0]?.room_id || 'N/A',
+            room_type: { name: booking.booking_rooms[0]?.room_type || 'Standard' },
+            image_url: '/hotel1.jpeg' // Default image
+          },
+          check_in_date: booking.check_in,
+          check_out_date: booking.check_out,
+          number_of_guests: booking.total_guests,
+          total_amount: booking.total_price,
+          status: booking.status,
+          special_requests: null,
+          rating: null,
+          guest_name: booking.guest_name,
+          phone: booking.phone,
+          payment_method: booking.payment_method,
+          created_at: booking.created_at
+        }))
+      }
+      
+      return []
     } catch (error) {
       console.error('❌ Member Bookings API Error:', error)
-      
-      // Return mock data for development
-      return [
-        {
-          id: 1,
-          room: {
-            id: 1,
-            name: 'Deluxe Ocean View',
-            room_number: '101',
-            room_type: { name: 'Deluxe' },
-            image_url: '/hotel1.jpeg'
-          },
-          check_in_date: '2024-01-15',
-          check_out_date: '2024-01-18',
-          number_of_guests: 2,
-          total_amount: 2500000,
-          status: 'confirmed',
-          special_requests: 'Late check-in requested',
-          rating: null
-        },
-        {
-          id: 2,
-          room: {
-            id: 2,
-            name: 'Presidential Suite',
-            room_number: '501',
-            room_type: { name: 'Suite' },
-            image_url: '/hotel2.jpeg'
-          },
-          check_in_date: '2024-02-10',
-          check_out_date: '2024-02-12',
-          number_of_guests: 4,
-          total_amount: 5000000,
-          status: 'pending',
-          special_requests: null,
-          rating: null
-        },
-        {
-          id: 3,
-          room: {
-            id: 3,
-            name: 'Standard Room',
-            room_number: '205',
-            room_type: { name: 'Standard' },
-            image_url: '/hotel3.jpeg'
-          },
-          check_in_date: '2023-12-20',
-          check_out_date: '2023-12-23',
-          number_of_guests: 1,
-          total_amount: 1200000,
-          status: 'confirmed',
-          special_requests: 'Quiet room preferred',
-          rating: 5
-        }
-      ]
+      throw error
     }
   },
 
@@ -138,6 +110,74 @@ export const bookingsAPI = {
       return response.data
     } catch (error) {
       console.error('❌ Rate Booking API Error:', error)
+      throw error
+    }
+  },
+
+  // Get user notifications
+  getNotifications: async () => {
+    try {
+      console.log('🚀 API Request: GET /notifications')
+      const response = await api.get('/notifications')
+      console.log('✅ API Response:', response.status, '/notifications')
+      return response.data
+    } catch (error) {
+      console.error('❌ Get Notifications API Error:', error)
+      throw error
+    }
+  },
+
+  // Mark notification as read
+  markNotificationRead: async (notificationId) => {
+    try {
+      console.log('🚀 API Request: PUT /notifications/' + notificationId + '/read')
+      const response = await api.put(`/notifications/${notificationId}/read`)
+      console.log('✅ API Response:', response.status, `/notifications/${notificationId}/read`)
+      return response.data
+    } catch (error) {
+      console.error('❌ Mark Notification Read API Error:', error)
+      throw error
+    }
+  },
+
+  // Get active promotions
+  getPromotions: async () => {
+    try {
+      console.log('🚀 API Request: GET /promotions')
+      const response = await api.get('/promotions')
+      console.log('✅ API Response:', response.status, '/promotions')
+      return response.data
+    } catch (error) {
+      console.error('❌ Get Promotions API Error:', error)
+      throw error
+    }
+  },
+
+  // Get guest services
+  getGuestServices: async () => {
+    try {
+      console.log('🚀 API Request: GET /services')
+      const response = await api.get('/services')
+      console.log('✅ API Response:', response.status, '/services')
+      return response.data
+    } catch (error) {
+      console.error('❌ Get Guest Services API Error:', error)
+      throw error
+    }
+  },
+
+  // Check room availability
+  checkRoomAvailability: async (checkIn, checkOut, roomTypeId = null) => {
+    try {
+      console.log('🚀 API Request: GET /rooms/availability')
+      const params = { check_in: checkIn, check_out: checkOut }
+      if (roomTypeId) params.room_type_id = roomTypeId
+      
+      const response = await api.get('/rooms/availability', { params })
+      console.log('✅ API Response:', response.status, '/rooms/availability')
+      return response.data
+    } catch (error) {
+      console.error('❌ Check Room Availability API Error:', error)
       throw error
     }
   }

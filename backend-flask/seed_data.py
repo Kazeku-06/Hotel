@@ -11,12 +11,10 @@ import random
 # Add the parent directory to the path so we can import the app
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app import create_app, db
-from app.models import User, RoomType, Room, RoomPhoto, Facility, FacilityRoom, Booking, BookingRoom, Rating
+# Import from single_app.py instead
+from single_app import app, db, User, RoomType, Room, RoomPhoto, Facility, FacilityRoom, Booking, BookingRoom, Rating
 
 def create_sample_data():
-    app = create_app()
-    
     with app.app_context():
         print("🚀 Starting to seed database with real data...")
         
