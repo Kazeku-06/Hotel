@@ -103,13 +103,16 @@ const AdminPromotions3D = () => {
     setFormData({
       title: promotion.title,
       description: promotion.description,
-      discount_ty 1,
-      valid_from: '',
-      valid_until: '',
-      is_active: true,
-      room_type_id: ''
+      discount_type: promotion.discount_type,
+      discount_value: promotion.discount_value,
+      min_nights: promotion.min_nights,
+      valid_from: promotion.valid_from,
+      valid_until: promotion.valid_until,
+      is_active: promotion.is_active,
+      room_type_id: promotion.room_type_id ?? ''
     })
   }
+
 
   const filteredPromotions = promotions.filter(promotion => {
     const matchesSearch = promotion.title.toLowerCase().includes(searchTerm.toLowerCase()) ||

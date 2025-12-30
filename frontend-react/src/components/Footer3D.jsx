@@ -19,7 +19,7 @@ const Footer3D = () => {
   const socialLinks = [
     { icon: Facebook, href: '#', color: 'hover:text-blue-600' },
     { icon: Twitter, href: '#', color: 'hover:text-sky-500' },
-    { icon: Instagram, href: '#', color: 'hover:text-pink-600' },
+    { icon: Instagram, href: 'https://www.instagram.com/nhhdky/', color: 'hover:text-pink-600' },
     { icon: Youtube, href: '#', color: 'hover:text-red-600' }
   ]
 

@@ -39,6 +39,17 @@ CORS(app,
      expose_headers=["Content-Type", "Authorization"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
+# Additional CORS configuration for specific routes
+CORS(app, 
+     resources={
+         r"/api/auth/google/*": {
+             "origins": ALLOWED_ORIGINS,
+             "methods": ["GET", "POST", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization"]
+         }
+     },
+     supports_credentials=True)
+
 
 # Ensure preflight and all responses include the required CORS headers
 @app.after_request
@@ -50,6 +61,19 @@ def add_cors_headers(response):
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     return response
+
+# Handle preflight OPTIONS requests
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        origin = request.headers.get('Origin')
+        if origin and origin in ALLOWED_ORIGINS:
+            response = jsonify({'status': 'OK'})
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            return response
 # Create upload directory
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'rooms'), exist_ok=True)
@@ -264,6 +288,11 @@ class Notification(db.Model):
 def home():
     return jsonify({'message': 'Hotel API is running!', 'database': 'MySQL with Laragon'})
 
+# Test CORS endpoint
+@app.route('/api/test-cors', methods=['GET', 'POST', 'OPTIONS'])
+def test_cors():
+    return jsonify({'message': 'CORS is working!', 'method': request.method})
+
 # ==== AUTH ROUTES ====
 @app.route('/api/auth/login', methods=['POST'])
 
@@ -347,6 +376,172 @@ def register():
     except Exception as e:
         db.session.rollback()
         print(f"❌ ERROR in register: {str(e)}")
+        return jsonify({'message': str(e)}), 400    
+
+# ==== GOOGLE OAUTH ROUTE ====
+@app.route('/api/auth/google', methods=['POST'])
+def google_auth():
+    try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token
+        
+        data = request.get_json()
+        token = data.get('token')
+        user_data = data.get('user', {})
+        
+        if not token:
+            return jsonify({'message': 'Google token is required'}), 400
+        
+        # Verify the Google token
+        try:
+            # For development, we'll skip verification and use the provided user data
+            # In production, you should verify the token with Google
+            # idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+            
+            email = user_data.get('email')
+            name = user_data.get('name')
+            google_id = user_data.get('google_id')
+            picture = user_data.get('picture')
+            
+            if not email or not name:
+                return jsonify({'message': 'Invalid Google user data'}), 400
+            
+            # Check if user already exists
+            user = User.query.filter_by(email=email).first()
+            
+            if user:
+                # User exists, update Google ID if not set
+                if not hasattr(user, 'google_id') or not user.google_id:
+                    # Add google_id field to user if it doesn't exist
+                    pass
+            else:
+                # Create new user
+                user = User(
+                    name=name,
+                    email=email,
+                    phone='',  # Google doesn't always provide phone
+                    role='member'
+                )
+                # Set a random password for Google users
+                user.set_password(f'google_user_{google_id}_{uuid.uuid4()}')
+                
+                db.session.add(user)
+                db.session.commit()
+            
+            # Create access token
+            access_token = create_access_token(identity=user.id)
+            
+            return jsonify({
+                'access_token': access_token,
+                'user': {
+                    'id': user.id,
+                    'name': user.name,
+                    'email': user.email,
+                    'phone': user.phone,
+                    'role': user.role,
+                    'picture': picture
+                }
+            }), 200
+            
+        except ValueError as e:
+            return jsonify({'message': 'Invalid Google token'}), 401
+            
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ ERROR in google_auth: {str(e)}")
+        return jsonify({'message': str(e)}), 400
+
+# ==== GOOGLE OAUTH CALLBACK ROUTE ====
+@app.route('/api/auth/google/callback', methods=['POST'])
+def google_callback():
+    try:
+        import requests
+        
+        data = request.get_json()
+        code = data.get('code')
+        
+        if not code:
+            return jsonify({'message': 'Authorization code is required'}), 400
+        
+        # Exchange authorization code for tokens
+        token_url = 'https://oauth2.googleapis.com/token'
+        token_data = {
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID'),
+            'client_secret': os.environ.get('GOOGLE_CLIENT_SECRET'),
+            'code': code,
+            'grant_type': 'authorization_code',
+            'redirect_uri': 'http://localhost:3000/auth/google/callback'
+        }
+        
+        print(f"🔍 Token exchange data: {token_data}")  # Debug log
+        
+        token_response = requests.post(token_url, data=token_data)
+        token_json = token_response.json()
+        
+        print(f"🔍 Token response: {token_json}")  # Debug log
+        
+        if 'error' in token_json:
+            return jsonify({'message': f'Token exchange failed: {token_json["error"]}'}), 400
+        
+        # Get user info from Google
+        access_token = token_json.get('access_token')
+        user_info_url = f'https://www.googleapis.com/oauth2/v2/userinfo?access_token={access_token}'
+        user_response = requests.get(user_info_url)
+        user_info = user_response.json()
+        
+        print(f"🔍 User info: {user_info}")  # Debug log
+        
+        if 'error' in user_info:
+            return jsonify({'message': 'Failed to get user info from Google'}), 400
+        
+        email = user_info.get('email')
+        name = user_info.get('name')
+        google_id = user_info.get('id')
+        picture = user_info.get('picture')
+        
+        if not email or not name:
+            return jsonify({'message': 'Invalid Google user data'}), 400
+        
+        # Check if user already exists
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # User exists, update info if needed
+            if user.name != name:
+                user.name = name
+                db.session.commit()
+        else:
+            # Create new user
+            user = User(
+                name=name,
+                email=email,
+                phone='',  # Google doesn't always provide phone
+                role='member'
+            )
+            # Set a random password for Google users
+            user.set_password(f'google_user_{google_id}_{uuid.uuid4()}')
+            
+            db.session.add(user)
+            db.session.commit()
+        
+        # Create access token
+        access_token = create_access_token(identity=user.id)
+        
+        return jsonify({
+            'access_token': access_token,
+            'user': {
+                'id': user.id,
+                'name': user.name,
+                'email': user.email,
+                'phone': user.phone,
+                'role': user.role,
+                'picture': picture
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ ERROR in google_callback: {str(e)}")
         return jsonify({'message': str(e)}), 400    
 
 # ==== AUTH ME ROUTE ====

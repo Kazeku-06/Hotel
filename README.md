@@ -1,175 +1,185 @@
-# 🏨 Hotel Management System - Fullstack
+# 🏨 Grand Imperion Hotel Management System
 
-This is a full-stack hotel management system with a React frontend and a Flask backend.
+Modern hotel management system dengan 3D UI, Google OAuth, dan real-time booking system.
 
 ## ✨ Features
 
-*   User registration and authentication (JWT-based)
-*   Room browsing and filtering
-*   Room booking
-*   Admin dashboard for managing rooms, bookings, and ratings
-*   Image uploads for room photos
-*   User roles (member and admin)
+- 🎨 **3D UI Design** - Traveloka-inspired dengan Framer Motion animations
+- 🔐 **Google OAuth** - Login dengan Google account
+- 📱 **Mobile Responsive** - Optimized untuk semua device
+- 🏨 **Room Management** - CRUD operations untuk rooms
+- 📅 **Booking System** - Real-time booking dengan database integration
+- 👨‍💼 **Admin Dashboard** - Complete admin panel dengan statistics
+- ⭐ **Rating System** - User reviews dan ratings
+- 🔄 **Real Data** - Tidak ada mock data, semua dari database
 
-## 🛠️ Tech Stack
-
-### Backend (Flask)
-
-*   Flask
-*   Flask-SQLAlchemy
-*   Flask-Migrate
-*   Flask-JWT-Extended
-*   Flask-CORS
-*   PyMySQL
-*   python-dotenv
-
-### Frontend (React)
-
-*   React
-*   React Router
-*   Axios
-*   Tailwind CSS
-*   Vite
-
-## ✍️ Author
-
-*   **GitHub:** [Kazeku-06](https://github.com/Kazeku-06)
-
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
 
-*   Python 3.10+
-*   Node.js 16+
-*   MySQL
+- Node.js 16+
+- Python 3.8+
+- MySQL (Laragon recommended)
 
-### 📦 Installation
+### 1. Clone Repository
 
-1.  **Clone the repository:**
+```bash
+git clone <repository-url>
+cd hotel-management-system
+```
 
-    ```bash
-    git clone https://github.com/Kazeku-06/Hotel.git
-    cd hotel
-    ```
+### 2. Setup Backend
 
-2.  **Backend Setup (Flask):**
+```bash
+cd backend-flask
 
-    ```bash
-    cd backend-flask
-    python -m venv venv
-    # On Windows
-    venv\Scripts\activate
-    # On macOS/Linux
-    source venv/bin/activate
-    pip install -r requirements.txt
-    ```
+# Install dependencies
+pip install -r requirements.txt
 
-    Create a `.env` file in the `backend-flask` directory and add the following:
+# Setup environment variables
+cp .env.example .env
+# Edit .env with your actual values
 
-    ```env
-    FLASK_APP=run.py
-    FLASK_ENV=development
-    SECRET_KEY=your-super-secret-key
-    JWT_SECRET_KEY=your-jwt-secret-key
-    SQLALCHEMY_DATABASE_URI=mysql+pymysql://user:password@localhost/hotel_db
-    UPLOAD_FOLDER=uploads
-    ```
+# Seed database with sample data
+python seed_data.py
 
-    Initialize the database:
+# Run server
+python single_app.py
+```
 
-    ```bash
-    # these commands are not available in the project, you need to create them
-    # flask db init
-    # flask db migrate
-    # flask db upgrade
-    ```
+### 3. Setup Frontend
 
-    Run the backend server:
+```bash
+cd frontend-react
 
-    ```bash
-    flask run
-    ```
+# Install dependencies
+npm install
 
-    The backend will be running at `http://127.0.0.1:5000`.
+# Setup environment variables
+cp .env.example .env
+# Edit .env with your Google Client ID
 
-3.  **Frontend Setup (React):**
+# Run development server
+npm run dev
+```
 
-    ```bash
-    cd frontend-react
-    npm install
-    npm run dev
-    ```
+### 4. Setup Google OAuth
 
-    The frontend development server will be running at `http://localhost:3000`.
+1. Buka [Google Cloud Console](https://console.cloud.google.com/)
+2. Create project atau pilih existing project
+3. Enable Google+ API
+4. Create OAuth 2.0 credentials
+5. Add redirect URI: `http://localhost:3000/auth/google/callback`
+6. Copy Client ID dan Client Secret ke .env files
 
-##  API Documentation
+Lihat [GOOGLE_OAUTH_SETUP.md](GOOGLE_OAUTH_SETUP.md) untuk detail lengkap.
 
-### Auth (`/api/auth`)
+## 📁 Project Structure
 
-*   **POST `/register`**
-    *   **Description:** Registers a new user.
-    *   **Request Body:**
-        ```json
-        {
-          "name": "John Doe",
-          "email": "john.doe@example.com",
-          "password": "password123",
-          "phone": "1234567890"
-        }
-        ```
-    *   **Response:**
-        *   `201 Created`: User registered successfully.
-        *   `400 Bad Request`: If email already exists or data is invalid.
+```
+hotel-management-system/
+├── frontend-react/          # React frontend dengan 3D UI
+│   ├── src/
+│   │   ├── components/      # Reusable components
+│   │   ├── pages/          # Page components
+│   │   ├── services/       # API services
+│   │   └── context/        # React context
+│   ├── .env.example        # Environment template
+│   └── package.json
+├── backend-flask/           # Flask backend API
+│   ├── app/
+│   │   ├── models.py       # Database models
+│   │   └── routes/         # API routes
+│   ├── single_app.py       # Main Flask app
+│   ├── seed_data.py        # Database seeder
+│   ├── .env.example        # Environment template
+│   └── requirements.txt
+└── README.md
+```
 
-*   **POST `/login`**
-    *   **Description:** Logs in a user and returns a JWT token.
-    *   **Request Body:**
-        ```json
-        {
-          "email": "john.doe@example.com",
-          "password": "password123"
-        }
-        ```
-    *   **Response:**
-        *   `200 OK`: Returns access token and user info.
-        *   `401 Unauthorized`: Invalid credentials.
+## 🔐 Default Login Credentials
 
-*   **GET `/me`**
-    *   **Description:** Gets the currently authenticated user's information.
-    *   **Requires:** Authentication (JWT Token).
-    *   **Response:**
-        *   `200 OK`: Returns user information.
-        *   `404 Not Found`: User not found.
+After running `seed_data.py`:
 
-### Main (`/api`)
+**Admin:**
+- Email: `admin@grandimperion.com`
+- Password: `admin123`
 
-*   **GET `/rooms`**
-    *   **Description:** Gets a list of available rooms. Can be filtered by `room_type`, `min_price`, `max_price`, and `capacity`.
-    *   **Query Parameters (Optional):**
-        *   `room_type` (integer)
-        *   `min_price` (float)
-        *   `max_price` (float)
-        *   `capacity` (integer)
-    *   **Response:**
-        *   `200 OK`: Returns a list of rooms.
+**Member:**
+- Email: `john.doe@email.com`
+- Password: `password123`
 
-*   **GET `/rooms/<room_id>`**
-    *   **Description:** Gets the details of a specific room.
-    *   **Response:**
-        *   `200 OK`: Returns room details.
-        *   `404 Not Found`: Room not found.
+## 🛠️ Development
 
-### Admin (`/api/admin`)
+### Frontend Development
 
-*All admin routes require an admin role and JWT authentication.*
+```bash
+cd frontend-react
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+```
 
-*   **GET `/room-types`**: Get all room types.
-*   **GET `/rooms`**: Get all rooms (not just available ones).
-*   **POST `/rooms`**: Create a new room.
-*   **PUT `/rooms/<room_id>`**: Update a room.
-*   **DELETE `/rooms/<room_id>`**: Delete a room.
-*   **POST `/rooms/<room_id>/photos`**: Upload photos for a room.
-*   **DELETE `/room-photos/<photo_id>`**: Delete a room photo.
-*   **GET `/bookings`**: Get all bookings.
-*   **PUT `/bookings/<booking_id>/status`**: Update the status of a booking.
-*   **GET `/ratings`**: Get all ratings.
+### Backend Development
+
+```bash
+cd backend-flask
+python single_app.py # Start Flask server
+python seed_data.py  # Reseed database
+```
+
+## 📱 API Endpoints
+
+### Authentication
+- `POST /api/auth/login` - Email/password login
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/google` - Google OAuth (JWT method)
+- `POST /api/auth/google/callback` - Google OAuth callback
+- `GET /api/auth/me` - Get current user
+
+### Rooms
+- `GET /api/rooms` - Get all rooms with filters
+- `GET /api/rooms/:id` - Get room details
+- `POST /api/admin/rooms` - Create room (admin)
+- `PUT /api/admin/rooms/:id` - Update room (admin)
+- `DELETE /api/admin/rooms/:id` - Delete room (admin)
+
+### Bookings
+- `GET /api/bookings/member` - Get user bookings
+- `POST /api/bookings` - Create booking
+- `GET /api/admin/bookings` - Get all bookings (admin)
+- `PATCH /api/admin/bookings/:id/status` - Update booking status (admin)
+
+### Admin
+- `GET /api/admin/dashboard` - Dashboard statistics
+- `GET /api/admin/reviews` - Get all reviews
+- `DELETE /api/admin/reviews/:id` - Delete review
+
+## 🔒 Security Features
+
+- JWT authentication
+- CORS protection
+- Environment variables for secrets
+- Input validation
+- SQL injection prevention
+- XSS protection
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+## 📞 Support
+
+For support, email support@grandimperion.com or create an issue on GitHub.
+
+---
+
+Made with ❤️ by Grand Imperion Team

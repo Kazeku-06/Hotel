@@ -23,36 +23,10 @@ export const bookingsAPI = {
   // Get member bookings
   getMemberBookings: async () => {
     try {
-      console.log('🚀 API Request: GET /bookings/me')
-      const response = await api.get('/bookings/me')
-      console.log('✅ API Response:', response.status, '/bookings/me')
-      
-      // Transform the data to match frontend expectations
-      if (response.data.success && Array.isArray(response.data.data)) {
-        return response.data.data.map(booking => ({
-          id: booking.id,
-          room: {
-            id: booking.booking_rooms[0]?.room_id || null,
-            name: `${booking.booking_rooms[0]?.room_type || 'Room'} - ${booking.guest_name}`,
-            room_number: booking.booking_rooms[0]?.room_id || 'N/A',
-            room_type: { name: booking.booking_rooms[0]?.room_type || 'Standard' },
-            image_url: '/hotel1.jpeg' // Default image
-          },
-          check_in_date: booking.check_in,
-          check_out_date: booking.check_out,
-          number_of_guests: booking.total_guests,
-          total_amount: booking.total_price,
-          status: booking.status,
-          special_requests: null,
-          rating: null,
-          guest_name: booking.guest_name,
-          phone: booking.phone,
-          payment_method: booking.payment_method,
-          created_at: booking.created_at
-        }))
-      }
-      
-      return []
+      console.log('🚀 API Request: GET /bookings/member')
+      const response = await api.get('/bookings/member')
+      console.log('✅ API Response:', response.status, '/bookings/member')
+      return response.data
     } catch (error) {
       console.error('❌ Member Bookings API Error:', error)
       throw error

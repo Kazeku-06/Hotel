@@ -10,6 +10,7 @@ import Checkout3D from '../pages/Checkout3D'
 import MemberBookings3D from '../pages/MemberBookings3D'
 import BookingSuccess3D from '../pages/BookingSuccess3D'
 import MemberRate from '../pages/MemberRate'
+import GoogleCallback from '../pages/GoogleCallback'
 import AdminDashboard3D from '../pages/admin/AdminDashboard3D'
 import AdminRooms3D from '../pages/admin/AdminRooms3D'
 import AdminBookings3D from '../pages/admin/AdminBookings3D'
@@ -98,6 +99,9 @@ export const AppRouter = () => {
           <Register3D />
         </PublicRoute>
       } />
+
+      {/* Google OAuth Callback */}
+      <Route path="/auth/google/callback" element={<GoogleCallback />} />
 
       {/* Member Only Routes - Admin tidak bisa akses */}
       <Route path="/checkout" element={
